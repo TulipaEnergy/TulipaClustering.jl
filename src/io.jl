@@ -8,8 +8,8 @@ in the `input_folder`.
 
 The following files are expected to exist in the input folder:
 
-  - `demand.csv`: Following the [`TulipaEnergyModel.DemandData`](@ref) specification.
-  - `generation-availability.csv`: Following the [`TulipaEnergyModel.GenerationAvailabilityData`](@ref) specification.
+  - `demand.csv`: Following the [`TulipaClustering.DemandData`](@ref) specification.
+  - `generation-availability.csv`: Following the [`TulipaClustering.GenerationAvailabilityData`](@ref) specification.
 
 The output contains:
 
