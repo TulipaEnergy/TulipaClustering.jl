@@ -13,7 +13,8 @@ makedocs(;
   format = Documenter.HTML(;
     prettyurls = get(ENV, "CI", "false") == "true",
     canonical = "https://TulipaEnergy.github.io/TulipaClustering.jl",
-    assets = ["assets/style.css"],
+    edit_link = "main",
+    assets = String[],
   ),
   pages = [
     "Home" => "index.md",
@@ -23,4 +24,4 @@ makedocs(;
   ],
 )
 
-deploydocs(; repo = "github.com/TulipaEnergy/TulipaClustering.jl", push_preview = true)
+deploydocs(; repo = "github.com/TulipaEnergy/TulipaClustering.jl", devbranch = "main")
