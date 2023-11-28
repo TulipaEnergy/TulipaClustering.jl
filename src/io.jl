@@ -1,5 +1,21 @@
 export read_clustering_data_from_csv_folder
 
+"""
+    read_clustering_data_from_csv_folder(input_folder)
+
+Returns the [`TulipaClustering.ClusteringData`](@ref) reading all data from CSV files
+in the `input_folder`.
+
+The following files are expected to exist in the input folder:
+
+  - `demand.csv`: Following the [`TulipaEnergyModel.DemandData`](@ref) specification.
+  - `generation-availability.csv`: Following the [`TulipaEnergyModel.GenerationAvailabilityData`](@ref) specification.
+
+The output contains:
+
+  - `demand`: a DataFrame of demand values at different nodes per time step
+  - `generation_availability`: a DataFrame of availability coefficients for different generation technologies located at different nodes per time step
+"""
 function read_clustering_data_from_csv_folder(input_folder::AbstractString)
   # Read data
   fillpath(filename) = joinpath(input_folder, filename)
