@@ -1,7 +1,14 @@
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
-Manifest.toml
-docs/build/
+*.lp
+/Manifest.toml
+/docs/Manifest.toml
+/docs/build/
+env
+/.benchmarkci
+/benchmark/*.json
+coverage/
 *.rej
 .DS_Store
+.vscode
