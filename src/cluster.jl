@@ -26,12 +26,20 @@ function reshape_clustering_data!(
 end
 
 function _df_to_matrix(df::AbstractDataFrame)::Tuple{Matrix{Float64}, AbstractDataFrame}
-  col_names = setdiff(names(df), ["period", "value"])
-  result = unstack(df, col_names, :period, :value)
+  col_names = setdiff(names(df), ["period", "value"])                # find all columns that act as identifiers
+  result = unstack(df, col_names, :period, :value)                   # convert from long to wide format
   result = result[!, map(x -> !any(ismissing, x), eachcol(result))]  # remove columns with missing values
-  matrix = select(result, Not(col_names)) |> Matrix{Float64}
-  removed_columns = select(result, col_names)
+  matrix = select(result, Not(col_names)) |> Matrix{Float64}         # make a matrix from all columns with data
+  removed_columns = select(result, col_names)                        # save the removed columns so that they can be added back later
   return matrix, removed_columns
+end
+
+function _matrix_to_df(prefix_columns::AbstractDataFrame, centroids::AbstractDataFrame)
+  result = hcat(prefix_columns, centroids)            # prepend the previously deleted columns
+  result = stack(result, variable_name = :rep_period) # convert from wide to long format
+  result.rep_period = parse.(Int, result.rep_period)  # change the type of rep_period column to Int
+  select!(result, :rep_period, :time_step, :)         # move the rep_period column to the front
+  return result
 end
 
 function find_representative_periods(
@@ -63,19 +71,12 @@ function find_representative_periods(
     n_time_steps_per_period = data.demand.time_step |> unique |> length
     n_demand, n_periods = size(demand_matrix)
 
-    demand = hcat(demand_columns, centroids[1:n_demand, :])
-    demand = stack(demand, variable_name = :rep_period)
-    demand.rep_period = parse.(Int, demand.rep_period)
-    select!(demand, :rep_period, :time_step, :)
-
+    demand = _matrix_to_df(demand_columns, centroids[1:n_demand, :])
     if rescale_demand_data
       demand.value .*= demand_scaling_factor
     end
 
-    generation = hcat(generation_columns, centroids[(n_demand + 1):end, :])
-    generation = stack(generation, variable_name = :rep_period)
-    generation.rep_period = parse.(Int, generation.rep_period)
-    select!(generation, :rep_period, :time_step, :)
+    generation = _matrix_to_df(generation_columns, centroids[(n_demand + 1):end, :])
 
     w = n_time_steps_global / (n_periods * n_time_steps_per_period)
     weights =
