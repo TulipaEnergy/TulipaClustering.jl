@@ -198,3 +198,78 @@ end
     end
   end
 end
+
+@testset "K-medoids clustering" begin
+  @testset "Make sure that k-medoids returns the original periods when n_rp == n_periods" begin
+    @test begin
+      demand =
+        DataFrame([:period => repeat(1:2, inner = 2), :time_step => repeat(1:2, 2), :value => 1:4])
+      generation_availability = DataFrame([
+        :period => repeat(1:2, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+      clustering_result =
+        find_representative_periods(clustering_data, 2; method = :k_medoids, init = :kmcen)
+
+      clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
+    end
+
+    @test begin
+      demand = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 1:3])
+      generation_availability = DataFrame([
+        :period => repeat(1:2, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      generation_availability = generation_availability[1:(end - 2), :]
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+      clustering_result =
+        find_representative_periods(clustering_data, 2; method = :k_medoids, init = :kmcen)
+
+      clustering_result.weight_matrix == [1.0 0.0; 0.0 0.5]
+    end
+
+    @test begin
+      demand = DataFrame([:period => [1, 1, 2, 2, 3], :time_step => [1, 2, 1, 2, 1], :value => 1:5])
+      generation_availability = DataFrame([
+        :period => repeat(1:3, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 3),
+        :technology => repeat(["Solar", "Nuclear"], 6),
+        :value => 5:16,
+      ])
+      generation_availability = generation_availability[1:(end - 2), :]
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        drop_incomplete_last_period = true,
+        method = :k_medoids,
+        init = :kmcen,
+      )
+
+      clustering_result.weight_matrix == [1.25 0.0; 0.0 1.25]
+    end
+  end
+end
+
+@testset "Unknown clustering" begin
+  @testset "Make sure that clustering fails when incorrect method is given" begin
+    @test_throws ArgumentError begin
+      demand =
+        DataFrame([:period => repeat(1:2, inner = 2), :time_step => repeat(1:2, 2), :value => 1:4])
+      generation_availability = DataFrame([
+        :period => repeat(1:2, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+      clustering_result =
+        find_representative_periods(clustering_data, 2; method = :bad_method, init = :kmcen)
+    end
+  end
+end
