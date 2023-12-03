@@ -457,8 +457,8 @@ Finds representative periods via data clustering.
   - other named arguments can be provided; they are passed to the clustering method.
 """
 function find_representative_periods(
-  clustering_data::ClusteringData;
-  n_rp::Int = 10,
+  clustering_data::ClusteringData,
+  n_rp::Int;
   rescale_demand_data::Bool = true,
   drop_incomplete_last_period::Bool = false,
   method::Symbol = :k_means,

@@ -66,3 +66,23 @@ end
     end
   end
 end
+
+@testset "Clustering" begin
+  @testset "Make sure that k-means returns the original periods when n_rp == n_periods" begin
+    @test begin
+      demand =
+        DataFrame([:period => repeat(1:2, inner = 2), :time_step => repeat(1:2, 2), :value => 1:4])
+      generation_availability = DataFrame([
+        :period => repeat(1:2, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+
+      clustering_result =
+        find_representative_periods(clustering_data, 2; method = :k_means, init = :kmcen)
+      clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
+    end
+  end
+end
