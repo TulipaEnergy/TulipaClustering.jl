@@ -5,6 +5,7 @@ using CSV
 using DataFrames
 using Distances
 using Clustering
+using SparseArrays
 
 include("input-tables.jl")
 include("structures.jl")

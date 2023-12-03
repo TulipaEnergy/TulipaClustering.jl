@@ -1,33 +1,42 @@
 export ClusteringData
 
 """
-Structure to hold the time series used in clustering together with some
-summary statistics on the data.
+Structure to hold the data needed for clustering.
 """
-mutable struct TimeSeriesData
-  data::AbstractDataFrame
-  key_columns::Union{AbstractVector{Symbol}, Nothing}
-  total_time_steps::Union{Int, Nothing}
-  period_duration::Union{Int, Nothing}
-  n_periods::Union{Int, Nothing}
+mutable struct ClusteringData
+  demand::AbstractDataFrame
+  generation_availability::AbstractDataFrame
 
-  function TimeSeriesData(data)
-    if columnindex(data, :time_step) == 0
-      throw(DomainError(data, "DataFrame does not contain a column `time_step`"))
-    end
-    return new(data, nothing, nothing, nothing, nothing)
+  function ClusteringData(demand, generation_availability)
+    return new(demand, generation_availability)
   end
 end
 
 """
-Structure to hold the data needed for clustering.
+Structure to hold the time series used in clustering together with some
+summary statistics on the data.
 """
-mutable struct ClusteringData
-  demand::TimeSeriesData
-  generation_availability::TimeSeriesData
+mutable struct AuxiliaryClusteringData
+  key_columns_demand::AbstractVector{Symbol}
+  key_columns_generation_availability::AbstractVector{Symbol}
+  period_duration::Int
+  last_period_duration::Int
+  n_periods::Int
 
-  function ClusteringData(demand, generation_availability)
-    return new(TimeSeriesData(demand), TimeSeriesData(generation_availability))
+  function AuxiliaryClusteringData(
+    key_columns_demand,
+    key_columns_generation_availability,
+    period_duration,
+    last_period_duration,
+    n_periods,
+  )
+    return new(
+      key_columns_demand,
+      key_columns_generation_availability,
+      period_duration,
+      last_period_duration,
+      n_periods,
+    )
   end
 end
 
