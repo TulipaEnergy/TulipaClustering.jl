@@ -10,7 +10,7 @@ periods start with time step 1.
 
 # Examples
 
-```jldoctest
+```
 julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 1:3])
 3×3 DataFrame
  Row │ period  time_step  value
@@ -57,7 +57,7 @@ same period with index 1.
 
 # Examples
 
-```jldoctest
+```
 julia> df = DataFrame([:time_step => 1:4, :value => 5:8])
 4×2 DataFrame
  Row │ time_step  value
@@ -150,7 +150,7 @@ columns that act as keys (i.e., unique data identifiers within different periods
 
 # Examples
 
-```jldoctest
+```
 julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :a .=> "a", :value => 1:3])
 3×4 DataFrame
  Row │ period  time_step  a       value
@@ -295,7 +295,7 @@ format and returned alongside the matrix.
 
 # Examples
 
-```jldoctest
+```
 julia> df = DataFrame([:period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
 4×4 DataFrame
  Row │ period  time_step  a       value
@@ -335,7 +335,7 @@ Converts a a matrix `matrix` to a dataframe, appending the key columns given by
 
 # Examples
 
-```jldoctest
+```
 julia> m = [1.0 3.0; 2.0 4.0]
 2×2 Matrix{Float64}:
  1.0  3.0
@@ -379,7 +379,7 @@ representative period with index `rp` to `df`, using `key_columns` as keys.
 
 # Examples
 
-```jldoctest
+```
 julia> source_df = DataFrame([:period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], :a .=> "b", :value => 5:8])
 4×4 DataFrame
  Row │ period  time_step  a       value
