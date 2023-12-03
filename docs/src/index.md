@@ -1,5 +1,8 @@
 ```@meta
 CurrentModule = TulipaClustering
+DocTestSetup = quote
+    using DataFrames
+end
 ```
 
 # TulipaClustering

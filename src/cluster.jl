@@ -9,6 +9,7 @@ inferred automatically from the maximum time step value, assuming that
 periods start with time step 1.
 
 # Examples
+
 ```jldoctest
 julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 1:3])
 3×3 DataFrame
@@ -19,7 +20,7 @@ julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 
    2 │      1          2      2
    3 │      2          1      3
 
-julia> combine_periods!(df)
+julia> TulipaClustering.combine_periods!(df)
 3×2 DataFrame
  Row │ time_step  value
      │ Int64      Int64
@@ -67,7 +68,7 @@ julia> df = DataFrame([:time_step => 1:4, :value => 5:8])
    3 │         3      7
    4 │         4      8
 
-julia> split_into_periods!(df; period_duration=2)
+julia> TulipaClustering.split_into_periods!(df; period_duration=2)
 4×3 DataFrame
  Row │ period  time_step  value
      │ Int64   Int64      Int64
@@ -86,7 +87,7 @@ julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 
    2 │      1          2      2
    3 │      2          1      3
 
-julia> split_into_periods!(df; period_duration=1)
+julia> TulipaClustering.split_into_periods!(df; period_duration=1)
 3×3 DataFrame
  Row │ period  time_step  value
      │ Int64   Int64      Int64
@@ -95,7 +96,7 @@ julia> split_into_periods!(df; period_duration=1)
    2 │      2          1      2
    3 │      3          1      3
 
-julia> split_into_periods!(df)
+julia> TulipaClustering.split_into_periods!(df)
 3×3 DataFrame
  Row │ period  time_step  value
      │ Int64   Int64      Int64
@@ -307,12 +308,12 @@ julia> df = DataFrame([:period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], :a .
    3 │      2          1  a           3
    4 │      2          2  a           4
 
-julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:time_step, :a]); display(m)
+julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:time_step, :a]); m
 2×2 Matrix{Float64}:
  1.0  3.0
  2.0  4.0
 
-julia> display(k)
+julia> k
 2×2 DataFrame
  Row │ time_step  a
      │ Int64      String
