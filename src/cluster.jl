@@ -139,6 +139,7 @@ function split_into_periods!(
   # Split the data frames inside the clustering data into periods
   split_into_periods!(clustering_data.demand; period_duration)
   split_into_periods!(clustering_data.generation_availability; period_duration)
+  return clustering_data
 end
 
 """
