@@ -527,7 +527,8 @@ function find_representative_periods(
     assignments = kmeans_result.assignments
   elseif method ≡ :k_medoids
     # Do the clustering
-    distance_matrix = pairwise(distance, clustering_matrix)  # k-medoids uses distance matrix instead
+    # k-medoids uses distance matrix instead of clustering matrix
+    distance_matrix = pairwise(distance, clustering_matrix; dims = 2)
     kmedoids_result = kmedoids(distance_matrix, n_rp; args...)
 
     # Reinterpret the results
