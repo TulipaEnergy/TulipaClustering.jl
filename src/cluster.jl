@@ -211,9 +211,6 @@ Calculates auxiliary data associated with the `clustering_data`. These include:
   - `n_periods`: total number of periods
 """
 function find_auxiliary_data(clustering_data::ClusteringData)
-  if [:time_step, :value] ⊈ propertynames(clustering_data.demand)
-    throw(DomainError(clustering_data.demand, "DataFrame does not contain"))
-  end
   key_columns_demand = validate_df_and_find_key_columns(clustering_data.demand)
   key_columns_generation_availability =
     validate_df_and_find_key_columns(clustering_data.generation_availability)

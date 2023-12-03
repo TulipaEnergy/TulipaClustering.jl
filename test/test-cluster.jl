@@ -67,7 +67,7 @@ end
   end
 end
 
-@testset "Column valudation" begin
+@testset "Data valudation" begin
   @testset "Make sure that when the columns are right validation works and the key columns are found" begin
     @test begin
       df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :a .=> "a", :value => 1:3])
@@ -95,6 +95,49 @@ end
     @test_throws DomainError begin
       df = DataFrame([:time_step => 1, :value => 1])
       keys = TulipaClustering.validate_df_and_find_key_columns(df)
+    end
+  end
+
+  @testset "Make sure that finding auxiliary information fails when dataframes have different number of periods" begin
+    @test_throws DomainError begin
+      demand = DataFrame([:period => [1, 1], :time_step => 1:2, :value => 1:2])
+      generation_availability = DataFrame([
+        :period => repeat(1:2, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+      TulipaClustering.find_auxiliary_data(clustering_data)
+    end
+  end
+
+  @testset "Make sure that finding auxiliary information fails when dataframes have different period durations" begin
+    @test_throws DomainError begin
+      demand =
+        DataFrame([:period => repeat(1:2, inner = 3), :time_step => repeat(1:3, 2), :value => 1:6])
+      generation_availability = DataFrame([
+        :period => repeat(1:2, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+      TulipaClustering.find_auxiliary_data(clustering_data)
+    end
+  end
+
+  @testset "Make sure that finding auxiliary information fails when dataframes have different period durations" begin
+    @test_throws DomainError begin
+      demand = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 1:3])
+      generation_availability = DataFrame([
+        :period => repeat(1:2, inner = 4),
+        :time_step => repeat(1:2, inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_data = TulipaClustering.ClusteringData(demand, generation_availability)
+      TulipaClustering.find_auxiliary_data(clustering_data)
     end
   end
 end
