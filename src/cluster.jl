@@ -113,7 +113,7 @@ function split_into_periods!(df::AbstractDataFrame; period_duration::Union{Int, 
   if isnothing(period_duration)
     # If period_duration is nothing, then leave the time steps as is and
     # everything is just the same period with index 1.
-    df.period .= 1
+    insertcols!(df, :period => 1)
   else
     # Otherwise, split the time step index using 1-based modular arithmetic
     indices = fldmod1.(df.time_step, period_duration)  # find the new indices
