@@ -67,6 +67,38 @@ end
   end
 end
 
+@testset "Column valudation" begin
+  @testset "Make sure that when the columns are right validation works and the key columns are found" begin
+    @test begin
+      df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :a .=> "a", :value => 1:3])
+      keys = TulipaClustering.validate_df_and_find_key_columns(df)
+
+      keys == [:time_step, :a]
+    end
+  end
+
+  @testset "Make sure that the validation fails when `time_step` column is absent" begin
+    @test_throws DomainError begin
+      df = DataFrame([:value => 1])
+      keys = TulipaClustering.validate_df_and_find_key_columns(df)
+    end
+  end
+
+  @testset "Make sure that the validation fails when `value` column is absent" begin
+    @test_throws DomainError begin
+      df = DataFrame([:a => 1])
+      keys = TulipaClustering.validate_df_and_find_key_columns(df)
+    end
+  end
+
+  @testset "Make sure that the validation fails when `period` column is absent" begin
+    @test_throws DomainError begin
+      df = DataFrame([:time_step => 1, :value => 1])
+      keys = TulipaClustering.validate_df_and_find_key_columns(df)
+    end
+  end
+end
+
 @testset "Clustering" begin
   @testset "Make sure that k-means returns the original periods when n_rp == n_periods" begin
     @test begin
