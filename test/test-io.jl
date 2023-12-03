@@ -11,8 +11,8 @@
     @test begin
       dir = joinpath(INPUT_FOLDER, "EU")
       clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
-      size(clustering_data.demand.data) == (175200, 3) &&
-        size(clustering_data.generation_availability.data) == (525600, 4)
+      size(clustering_data.demand) == (175200, 3) &&
+        size(clustering_data.generation_availability) == (525600, 4)
     end
   end
 end
