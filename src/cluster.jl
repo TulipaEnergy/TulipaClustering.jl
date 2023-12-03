@@ -39,7 +39,7 @@ function combine_periods!(df::AbstractDataFrame)
     return  # if there is no column df.period, leave df as is
   end
   max_t = maximum(df.time_step)
-  @. df.time_step = (df.period - 1) * max_t + df.time_step
+  df.time_step .= (df.period .- 1) .* max_t .+ df.time_step
   select!(df, Not(:period))
 end
 
