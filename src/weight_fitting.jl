@@ -183,7 +183,7 @@ function fit_rep_period_weights!(
   n_periods = size(clustering_matrix, 2)
   n_rp = size(rp_matrix, 2)
 
-  for period ∈ 1:n_periods
+  for period ∈ 1:n_periods  # TODO: this can be parallelized; investigate
     target_vector = clustering_matrix[:, period]
     x = Vector(weight_matrix[period, 1:n_rp])
     if weight_type == :conical_bounded
