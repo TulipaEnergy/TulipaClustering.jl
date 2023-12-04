@@ -538,11 +538,6 @@ function find_representative_periods(
     throw(ArgumentError("Clustering method is not supported"))
   end
 
-  # If demands was rescaled, scale it back
-  if rescale_demand_data
-    rp_matrix[1:n_demand_rows, :] .*= demand_scaling_factor
-  end
-
   # Fill in the weight matrix using the assignments
   for (p, rp) ∈ enumerate(assignments)
     weight_matrix[p, rp] = complete_period_weight
@@ -552,6 +547,11 @@ function find_representative_periods(
 
   # First, convert the matrix data back to dataframes using the previously saved key columns
   demand_rp_df = matrix_and_keys_to_df(rp_matrix[1:n_demand_rows, :], demand_keys)
+  # If demands was rescaled, scale it back
+  if rescale_demand_data
+    demand_rp_df.value .*= demand_scaling_factor
+  end
+
   generation_availability_rp_df =
     matrix_and_keys_to_df(rp_matrix[(n_demand_rows + 1):end, :], generation_availability_keys)
 
@@ -574,5 +574,11 @@ function find_representative_periods(
     )
   end
 
-  return ClusteringResult(demand_rp_df, generation_availability_rp_df, weight_matrix)
+  return ClusteringResult(
+    demand_rp_df,
+    generation_availability_rp_df,
+    weight_matrix,
+    clustering_matrix,
+    rp_matrix,
+  )
 end

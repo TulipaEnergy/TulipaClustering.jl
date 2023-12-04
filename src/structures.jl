@@ -46,9 +46,17 @@ Structure to hold the clustering result.
 mutable struct ClusteringResult
   demand::AbstractDataFrame
   generation_availability::AbstractDataFrame
-  weight_matrix::Matrix{Float64}
+  weight_matrix::Union{SparseMatrixCSC{Float64, Int64}, Matrix{Float64}}
+  clustering_matrix::Matrix{Float64}
+  rp_matrix::Matrix{Float64}
 
-  function ClusteringResult(demand, generation_availability, weight_matrix)
-    return new(demand, generation_availability, weight_matrix)
+  function ClusteringResult(
+    demand,
+    generation_availability,
+    weight_matrix,
+    clustering_matrix,
+    rp_matrix,
+  )
+    return new(demand, generation_availability, weight_matrix, clustering_matrix, rp_matrix)
   end
 end
