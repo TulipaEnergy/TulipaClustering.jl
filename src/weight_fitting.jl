@@ -102,13 +102,17 @@ function projected_subgradient_descent!(
   learning_rate::Float64 = 0.001,
   adaptive_grad = true,
 )
-  diff = Inf
+  # It is possible that the initial guess is not in the required subspace;
+  # project it first.
+  x = projection(x)
+
   if adaptive_grad
     G = zeros(length(x))
   end
+
   for _ ∈ 1:niters
-    g = subgradient(x)
-    if adaptive_grad
+    g = subgradient(x)  # find the subgradient
+    if adaptive_grad    # find the learning rate
       G += g .^ 2
       α = learning_rate ./ (1e-6 .+ .√(G))
     else
