@@ -47,8 +47,8 @@ mutable struct ClusteringResult
   demand::AbstractDataFrame
   generation_availability::AbstractDataFrame
   weight_matrix::Union{SparseMatrixCSC{Float64, Int64}, Matrix{Float64}}
-  clustering_matrix::Matrix{Float64}
-  rp_matrix::Matrix{Float64}
+  clustering_matrix::Union{Matrix{Float64}, Nothing}
+  rp_matrix::Union{Matrix{Float64}, Nothing}
 
   function ClusteringResult(
     demand,
@@ -58,5 +58,9 @@ mutable struct ClusteringResult
     rp_matrix,
   )
     return new(demand, generation_availability, weight_matrix, clustering_matrix, rp_matrix)
+  end
+
+  function ClusteringResult(demand, generation_availability, weight_matrix)
+    return new(demand, generation_availability, weight_matrix, nothing, nothing)
   end
 end
