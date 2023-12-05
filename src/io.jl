@@ -117,8 +117,8 @@ function write_csv_with_prefixes(file_path, df; prefixes = nothing, csvargs...)
     # Convert the prefixes to a one-row table for `CSV.write` to use
     prefixes = reshape(prefixes, (1, length(prefixes))) |> Tables.table
     # First we write the prefixes, then we append the data drom the dataframe
-    CSV.write(file_path, prefixes; writeheader = false, strict = true, csvargs...)
-    CSV.write(file_path, df; writeheader = true, append = true, strict = true, csvargs...)
+    CSV.write(file_path, prefixes; header = false, strict = true, csvargs...)
+    CSV.write(file_path, df; header = true, append = true, strict = true, csvargs...)
   end
   return nothing
 end

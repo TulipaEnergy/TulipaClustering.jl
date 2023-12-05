@@ -1,5 +1,7 @@
 using CSV
 using DataFrames
+using LinearAlgebra
+using SparseArrays
 using TulipaClustering
 using Distances
 using Test
