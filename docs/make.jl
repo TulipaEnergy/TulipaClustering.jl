@@ -1,7 +1,12 @@
 using TulipaClustering
 using Documenter
 
-DocMeta.setdocmeta!(TulipaClustering, :DocTestSetup, :(using TulipaClustering); recursive = true)
+DocMeta.setdocmeta!(
+  TulipaClustering,
+  :DocTestSetup,
+  :(using TulipaClustering; using DataFrames);
+  recursive = true,
+)
 
 makedocs(;
   modules = [TulipaClustering],
