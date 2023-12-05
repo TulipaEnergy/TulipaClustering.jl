@@ -1,6 +1,7 @@
 using CSV
 using DataFrames
 using TulipaClustering
+using Distances
 using Test
 
 # Folders names
