@@ -11,4 +11,5 @@ Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
+DataFrames = "1"
 julia = "1.6"
