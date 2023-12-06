@@ -55,7 +55,7 @@ end
 """
   weight_matrix_to_df(weights)
 
-Converts a weight matrix from a (sparce) matrix, which is more convenient for
+Converts a weight matrix from a (sparse) matrix, which is more convenient for
 internal computations, to a dataframe, which is better for saving into a file.
 Zero weights are dropped so as not to clutter the dataframe.
 """
