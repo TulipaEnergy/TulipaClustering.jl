@@ -3,8 +3,7 @@ export read_clustering_data_from_csv_folder, write_clustering_result_to_csv_fold
 """
     read_clustering_data_from_csv_folder(input_folder)
 
-Returns the [`TulipaClustering.ClusteringData`](@ref) reading all data from CSV files
-in the `input_folder`.
+Returns the data frame with all of the needed data from the `input_folder`.
 
 `assets-profiles.csv` should exist in the directory, following the [`TulipaClustering.AssetProfiles`](@ref) specification.
 """
