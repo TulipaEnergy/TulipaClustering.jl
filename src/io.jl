@@ -3,28 +3,15 @@ export read_clustering_data_from_csv_folder, write_clustering_result_to_csv_fold
 """
     read_clustering_data_from_csv_folder(input_folder)
 
-Returns the [`TulipaClustering.ClusteringData`](@ref) reading all data from CSV files
-in the `input_folder`.
+Returns the data frame with all of the needed data from the `input_folder`.
 
-The following files are expected to exist in the input folder:
-
-  - `demand.csv`: Following the [`TulipaClustering.DemandData`](@ref) specification.
-  - `generation-availability.csv`: Following the [`TulipaClustering.GenerationAvailabilityData`](@ref) specification.
-
-The output contains:
-
-  - `demand`: a DataFrame of demand values at different nodes per time step
-  - `generation_availability`: a DataFrame of availability coefficients for different generation technologies located at different nodes per time step
+`assets-profiles.csv` should exist in the directory, following the [`TulipaClustering.AssetProfiles`](@ref) specification.
 """
-function read_clustering_data_from_csv_folder(input_folder::AbstractString)
-  # Read data
+function read_clustering_data_from_csv_folder(input_folder::AbstractString)::DataFrame
+  # Read the data
   fillpath(filename) = joinpath(input_folder, filename)
-
-  demand_df = read_csv_with_schema(fillpath("demand.csv"), DemandData)
-  generation_availability_df =
-    read_csv_with_schema(fillpath("generation-availability.csv"), GenerationAvailabilityData)
-
-  return ClusteringData(demand_df, generation_availability_df)
+  df = read_csv_with_schema(fillpath("assets-profiles.csv"), AssetProfiles)
+  return df
 end
 
 """
@@ -82,15 +69,9 @@ function write_clustering_result_to_csv_folder(
   fillpath(filename) = joinpath(output_folder, filename)
 
   write_csv_with_prefixes(
-    fillpath("demand.csv"),
-    clustering_result.demand,
+    fillpath("assets-profiles.csv"),
+    clustering_result.profiles,
     prefixes = [missing, missing, missing, "MW"],
-  )
-
-  write_csv_with_prefixes(
-    fillpath("generation-availability.csv"),
-    clustering_result.generation_availability,
-    prefixes = [missing, missing, missing, missing, "p.u."],
   )
 
   write_csv_with_prefixes(

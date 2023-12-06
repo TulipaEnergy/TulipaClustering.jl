@@ -98,9 +98,9 @@ function projected_subgradient_descent!(
   subgradient::Function,
   projection::Function,
   niters::Int = 100,
-  tol::Float64 = 1e-3,
+  tol::Float64 = 1e-5,
   learning_rate::Float64 = 0.001,
-  adaptive_grad = true,
+  adaptive_grad = false,
 )
   # It is possible that the initial guess is not in the required subspace;
   # project it first.
@@ -183,27 +183,32 @@ function fit_rep_period_weights!(
   n_periods = size(clustering_matrix, 2)
   n_rp = size(rp_matrix, 2)
 
+  is_sparse = issparse(weight_matrix)
+
   for period ∈ 1:n_periods  # TODO: this can be parallelized; investigate
     target_vector = clustering_matrix[:, period]
+    subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
     x = Vector(weight_matrix[period, 1:n_rp])
     if weight_type == :conical_bounded
       x[n_rp] = 0.0
     end
-    x = projected_subgradient_descent!(
-      x;
-      subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector),
-      projection,
-      tol = tol,
-      args...,
-    )
-    x[x .< tol] .= 0.0  # replace insifnificant small values with zeros
-    if weight_type == :convex
+    x = projected_subgradient_descent!(x; subgradient, projection, tol = tol * 0.01, args...)
+    x[x .< tol] .= 0.0  # replace insignificant small values with zeros
+    if weight_type == :convex || weight_type == :conical_bounded
       # Because some values might have been removed, convexity can be lost.
-      # To account for these, the weights are re-normalized.
-      x = x ./ sum(x)
+      # In the upper-bounded case, sometimes the sum can be slightly more than one
+      # due to floating-point arithmetic and rounding.
+      # To account for these cases, the weights are re-normalized.
+      sum_x = sum(x)
+      if weight_type == :convex || sum_x > 1.0
+        x = x ./ sum_x
+      end
     end
     if weight_type == :conical_bounded
       pop!(x)
+    end
+    if is_sparse
+      x = sparse(x)
     end
     weight_matrix[period, 1:length(x)] = x
   end
@@ -235,7 +240,7 @@ The arguments:
     through to `TulipaClustering.projected_subgradient_descent!`.
 """
 function fit_rep_period_weights!(
-  clustering_result = ClusteringResult;
+  clustering_result::ClusteringResult;
   weight_type::Symbol = :dirac,
   tol::Float64 = 10e-3,
   args...,
