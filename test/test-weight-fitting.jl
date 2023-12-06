@@ -74,6 +74,27 @@ end
       )
       all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .≤ 1.0)
     end
+
+    @test begin
+      dir = joinpath(INPUT_FOLDER, "EU")
+      clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
+      split_into_periods!(clustering_data; period_duration = 24 * 7)
+      clustering_result = find_representative_periods(
+        clustering_data,
+        10;
+        drop_incomplete_last_period = false,
+        method = :k_means,
+        distance = SqEuclidean(),
+        init = :kmcen,
+      )
+      TulipaClustering.fit_rep_period_weights!(
+        clustering_result;
+        weight_type = :conical_bounded,
+        niters = 5,
+        show_progress = true,
+      )
+      all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .≤ 1.0)
+    end
   end
 
   @testset "Make sure that weight fitting works correctly for conical weights" begin
