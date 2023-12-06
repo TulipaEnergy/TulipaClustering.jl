@@ -57,7 +57,7 @@ end
 
 Converts a weight matrix from a (sparse) matrix, which is more convenient for
 internal computations, to a dataframe, which is better for saving into a file.
-Zero weights are dropped so as not to clutter the dataframe.
+Zero weights are dropped to avoid cluttering the dataframe.
 """
 function weight_matrix_to_df(weights::Union{SparseMatrixCSC{Float64, Int64}, Matrix{Float64}})
   weights = sparse(weights)
