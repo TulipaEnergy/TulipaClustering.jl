@@ -100,7 +100,7 @@ function projected_subgradient_descent!(
   niters::Int = 100,
   tol::Float64 = 1e-5,
   learning_rate::Float64 = 0.001,
-  adaptive_grad = true,
+  adaptive_grad = false,
 )
   # It is possible that the initial guess is not in the required subspace;
   # project it first.
@@ -121,8 +121,6 @@ function projected_subgradient_descent!(
     y = x .- α .* g            # gradent step, may leave the domain
     x_new = projection(y)      # projection step, return to the domain
     diff = maximum(x_new - x)  # how much did the vector change
-    println(diff)
-    println(x_new)
     x = x_new
     if diff ≤ tol
       break
@@ -185,6 +183,8 @@ function fit_rep_period_weights!(
   n_periods = size(clustering_matrix, 2)
   n_rp = size(rp_matrix, 2)
 
+  is_sparse = issparse(weight_matrix)
+
   for period ∈ 1:n_periods  # TODO: this can be parallelized; investigate
     target_vector = clustering_matrix[:, period]
     subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
@@ -201,6 +201,9 @@ function fit_rep_period_weights!(
     end
     if weight_type == :conical_bounded
       pop!(x)
+    end
+    if is_sparse
+      x = sparse(x)
     end
     weight_matrix[period, 1:length(x)] = x
   end
