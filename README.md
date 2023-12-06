@@ -9,7 +9,7 @@
 [![Lint workflow Status](https://github.com/TulipaEnergy/TulipaClustering.jl/actions/workflows/Lint.yml/badge.svg?branch=main)](https://github.com/TulipaEnergy/TulipaClustering.jl/actions/workflows/Lint.yml?query=branch%3Amain)
 [![Docs workflow Status](https://github.com/TulipaEnergy/TulipaClustering.jl/actions/workflows/Docs.yml/badge.svg?branch=main)](https://github.com/TulipaEnergy/TulipaClustering.jl/actions/workflows/Docs.yml?query=branch%3Amain)
 
-[![Coverage](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl)
+[![Coverage](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl)
 [![DOI](https://zenodo.org/badge/DOI/FIXME)](https://doi.org/FIXME)
 
 ## How to Cite
