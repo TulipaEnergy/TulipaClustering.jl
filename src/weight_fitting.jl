@@ -190,7 +190,9 @@ function fit_rep_period_weights!(
     subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
     x = Vector(weight_matrix[period, 1:n_rp])
     if weight_type == :conical_bounded
-      x[n_rp] = 0.0
+      x = vcat(Vector(weight_matrix[period, 1:(n_rp - 1)]), [0.0])
+    else
+      x = Vector(weight_matrix[period, 1:n_rp])
     end
     x = projected_subgradient_descent!(x; subgradient, projection, tol = tol * 0.01, args...)
     x[x .< tol] .= 0.0  # replace insignificant small values with zeros
