@@ -152,6 +152,7 @@ The arguments:
         weight bounded from above by one.
   - `tol`: algorithm's tolerance; when the weights are adjusted by a value less
     then or equal to `tol`, they stop being fitted further.
+  - `show_progress`: if `true`, a progress bar will be displayed.
   - other arguments control the projected subgradient method; they are passed
     through to `TulipaClustering.projected_subgradient_descent!`.
 """
@@ -161,6 +162,7 @@ function fit_rep_period_weights!(
   rp_matrix::Matrix{Float64};
   weight_type::Symbol = :dirac,
   tol::Float64 = 10e-3,
+  show_progress = false,
   args...,
 )
   # Determine the appropriate projection method
@@ -185,7 +187,15 @@ function fit_rep_period_weights!(
 
   is_sparse = issparse(weight_matrix)
 
-  for period ∈ 1:n_periods  # TODO: this can be parallelized; investigate
+  if show_progress
+    println("Fitting representative period weights:")
+    periods = ProgressBar(1:n_periods)
+  else
+    periods = 1:n_periods
+  end
+
+  for period ∈ periods
+    # TODO: this can be parallelized; investigate
     target_vector = clustering_matrix[:, period]
     subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
     x = Vector(weight_matrix[period, 1:n_rp])
