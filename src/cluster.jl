@@ -226,7 +226,7 @@ function find_period_weights(
     incomplete_period_weight = nothing
   else
     complete_period_weight = 1.0
-    incomplete_period_weight = last_period_duration / period_duration
+    incomplete_period_weight = 1.0
   end
   return complete_period_weight, incomplete_period_weight
 end
