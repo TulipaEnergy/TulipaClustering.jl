@@ -126,23 +126,6 @@ function split_into_periods!(df::AbstractDataFrame; period_duration::Union{Int, 
 end
 
 """
-    split_into_periods!(clustering_data; period_duration)
-
-Modifies a [`TulipaClustering.ClusteringData`](@ref) structure by separating
-time steps into periods of length `period_duration` in the dataframes
-`clustering_data.demand` and `clustering_data.generation_availability`.
-"""
-function split_into_periods!(
-  clustering_data::ClusteringData;
-  period_duration::Union{Int, Nothing} = nothing,
-)
-  # Split the data frames inside the clustering data into periods
-  split_into_periods!(clustering_data.demand; period_duration)
-  split_into_periods!(clustering_data.generation_availability; period_duration)
-  return clustering_data
-end
-
-"""
     validate_df_and_find_key_columns(df)
 
 Checks that dataframe `df` contains the necessary columns and returns a list of
@@ -210,51 +193,13 @@ Calculates auxiliary data associated with the `clustering_data`. These include:
   - `last_period_duration`: duration of the last period
   - `n_periods`: total number of periods
 """
-function find_auxiliary_data(clustering_data::ClusteringData)
-  key_columns_demand = validate_df_and_find_key_columns(clustering_data.demand)
-  key_columns_generation_availability =
-    validate_df_and_find_key_columns(clustering_data.generation_availability)
-  n_periods = maximum(clustering_data.demand.period)
-  if maximum(clustering_data.generation_availability.period) != n_periods
-    throw(
-      DomainError(
-        clustering_data,
-        "Numbers of periods in the demand and generation availiability dataframes do not match.",
-      ),
-    )
-  end
-  period_duration = maximum(clustering_data.demand.time_step)
-  if maximum(clustering_data.generation_availability.time_step) != period_duration
-    throw(
-      DomainError(
-        clustering_data,
-        "Period durations in the demand and generation availiability dataframes do not match.",
-      ),
-    )
-  end
-  last_period_duration =
-    maximum(clustering_data.demand[clustering_data.demand.period .== n_periods, :time_step])
-  if maximum(
-    clustering_data.generation_availability[
-      clustering_data.generation_availability.period .== n_periods,
-      :time_step,
-    ],
-  ) != last_period_duration
-    throw(
-      DomainError(
-        clustering_data,
-        "Durations of the last periods in the demand and generation availiability dataframes do not match.",
-      ),
-    )
-  end
+function find_auxiliary_data(clustering_data::AbstractDataFrame)
+  key_columns = validate_df_and_find_key_columns(clustering_data)
+  n_periods = maximum(clustering_data.period)
+  period_duration = maximum(clustering_data.time_step)
+  last_period_duration = maximum(clustering_data[clustering_data.period .== n_periods, :time_step])
 
-  return AuxiliaryClusteringData(
-    key_columns_demand,
-    key_columns_generation_availability,
-    period_duration,
-    last_period_duration,
-    n_periods,
-  )
+  return AuxiliaryClusteringData(key_columns, period_duration, last_period_duration, n_periods)
 end
 
 """
@@ -454,9 +399,8 @@ Finds representative periods via data clustering.
   - other named arguments can be provided; they are passed to the clustering method.
 """
 function find_representative_periods(
-  clustering_data::ClusteringData,
+  clustering_data::AbstractDataFrame,
   n_rp::Int;
-  rescale_demand_data::Bool = true,
   drop_incomplete_last_period::Bool = false,
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
@@ -492,30 +436,10 @@ function find_representative_periods(
   # 3. Build the clustering matrix
 
   # First, find the demand matrix and rescale it if needed
-  demand_matrix, demand_keys = df_to_matrix_and_keys(
-    clustering_data.demand[clustering_data.demand.period .≤ n_complete_periods, :],
-    aux.key_columns_demand,
+  clustering_matrix, keys = df_to_matrix_and_keys(
+    clustering_data[clustering_data.period .≤ n_complete_periods, :],
+    aux.key_columns,
   )
-  if rescale_demand_data
-    # Generation availability is on a scale from 0 to 1, but demand is not;
-    # rescale the demand profiles by dividing them by the largest possible value,
-    # and remember this value so that the demands can be computed back from the
-    # normalized values later on.
-    demand_scaling_factor = maximum(demand_matrix[map(!ismissing, demand_matrix)])
-    demand_matrix ./= demand_scaling_factor
-  end
-  n_demand_rows = size(demand_matrix)[1]  # remember how many rows correspond to the demand data
-
-  # Second, find the generation availability matrix
-  generation_availability_matrix, generation_availability_keys = df_to_matrix_and_keys(
-    clustering_data.generation_availability[
-      clustering_data.generation_availability.period .≤ n_complete_periods,
-      :,
-    ],
-    aux.key_columns_generation_availability,
-  )
-  # Finally, merge the demand and generation availability data into one matrix
-  clustering_matrix = vcat(demand_matrix, generation_availability_matrix)
 
   # 4. Do the clustering, now that the data is transformed into a matrix
   if method ≡ :k_means
@@ -546,39 +470,19 @@ function find_representative_periods(
   # 5. Reinterpret the clustering results into a format we need
 
   # First, convert the matrix data back to dataframes using the previously saved key columns
-  demand_rp_df = matrix_and_keys_to_df(rp_matrix[1:n_demand_rows, :], demand_keys)
-  # If demands was rescaled, scale it back
-  if rescale_demand_data
-    demand_rp_df.value .*= demand_scaling_factor
-  end
-
-  generation_availability_rp_df =
-    matrix_and_keys_to_df(rp_matrix[(n_demand_rows + 1):end, :], generation_availability_keys)
+  rp_df = matrix_and_keys_to_df(rp_matrix, keys)
 
   # Next, re-append the last period if it was excluded from clustering
   if is_last_period_excluded
     n_rp += 1
     append_period_from_source_df_as_rp!(
-      demand_rp_df;
-      source_df = clustering_data.demand,
+      rp_df;
+      source_df = clustering_data,
       period = n_periods,
       rp = n_rp,
-      key_columns = aux.key_columns_demand,
-    )
-    append_period_from_source_df_as_rp!(
-      generation_availability_rp_df;
-      source_df = clustering_data.generation_availability,
-      period = n_periods,
-      rp = n_rp,
-      key_columns = aux.key_columns_generation_availability,
+      key_columns = aux.key_columns,
     )
   end
 
-  return ClusteringResult(
-    demand_rp_df,
-    generation_availability_rp_df,
-    weight_matrix,
-    clustering_matrix,
-    rp_matrix,
-  )
+  return ClusteringResult(rp_df, weight_matrix, clustering_matrix, rp_matrix)
 end

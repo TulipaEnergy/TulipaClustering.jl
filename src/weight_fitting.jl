@@ -98,7 +98,7 @@ function projected_subgradient_descent!(
   subgradient::Function,
   projection::Function,
   niters::Int = 100,
-  tol::Float64 = 1e-3,
+  tol::Float64 = 1e-5,
   learning_rate::Float64 = 0.001,
   adaptive_grad = true,
 )
@@ -121,6 +121,8 @@ function projected_subgradient_descent!(
     y = x .- α .* g            # gradent step, may leave the domain
     x_new = projection(y)      # projection step, return to the domain
     diff = maximum(x_new - x)  # how much did the vector change
+    println(diff)
+    println(x_new)
     x = x_new
     if diff ≤ tol
       break
@@ -185,18 +187,13 @@ function fit_rep_period_weights!(
 
   for period ∈ 1:n_periods  # TODO: this can be parallelized; investigate
     target_vector = clustering_matrix[:, period]
+    subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
     x = Vector(weight_matrix[period, 1:n_rp])
     if weight_type == :conical_bounded
       x[n_rp] = 0.0
     end
-    x = projected_subgradient_descent!(
-      x;
-      subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector),
-      projection,
-      tol = tol,
-      args...,
-    )
-    x[x .< tol] .= 0.0  # replace insifnificant small values with zeros
+    x = projected_subgradient_descent!(x; subgradient, projection, tol = tol * 0.01, args...)
+    x[x .< tol] .= 0.0  # replace insignificant small values with zeros
     if weight_type == :convex
       # Because some values might have been removed, convexity can be lost.
       # To account for these, the weights are re-normalized.
@@ -235,7 +232,7 @@ The arguments:
     through to `TulipaClustering.projected_subgradient_descent!`.
 """
 function fit_rep_period_weights!(
-  clustering_result = ClusteringResult;
+  clustering_result::ClusteringResult;
   weight_type::Symbol = :dirac,
   tol::Float64 = 10e-3,
   args...,

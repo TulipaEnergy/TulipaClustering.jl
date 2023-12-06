@@ -43,7 +43,6 @@ end
       clustering_result = find_representative_periods(
         clustering_data,
         10;
-        rescale_demand_data = true,
         drop_incomplete_last_period = false,
         method = :k_means,
         distance = SqEuclidean(),
@@ -63,7 +62,6 @@ end
       clustering_result = find_representative_periods(
         clustering_data,
         10;
-        rescale_demand_data = true,
         drop_incomplete_last_period = false,
         method = :k_means,
         distance = SqEuclidean(),
@@ -86,7 +84,6 @@ end
       clustering_result = find_representative_periods(
         clustering_data,
         10;
-        rescale_demand_data = true,
         drop_incomplete_last_period = false,
         method = :k_means,
         distance = SqEuclidean(),
