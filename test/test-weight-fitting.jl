@@ -29,7 +29,7 @@ end
       niters = 2,
       tol = 1e-3,
       learning_rate = 100.0,
-      adaptive_grad = false,
+      adaptive_grad = true,
     ) ≈ [1.0, 0.0]
   end
 end
