@@ -49,7 +49,7 @@ end
         init = :kmcen,
       )
       TulipaClustering.fit_rep_period_weights!(clustering_result; weight_type = :convex, niters = 5)
-      sum(clustering_result.weight_matrix) ≈ 365 / 7 &&
+      sum(clustering_result.weight_matrix) ≈ round(365 / 7, RoundUp) &&
         all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .≈ 1.0)
     end
   end

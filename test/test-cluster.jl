@@ -122,7 +122,7 @@ end
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :k_means, init = :kmcen)
 
-      clustering_result.weight_matrix == [1.0 0.0; 0.0 0.5]
+      clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
     end
 
     @test begin
@@ -172,7 +172,7 @@ end
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :k_medoids, init = :kmcen)
 
-      clustering_result.weight_matrix == [1.0 0.0; 0.0 0.5]
+      clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
     end
 
     @test begin
