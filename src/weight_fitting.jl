@@ -194,10 +194,15 @@ function fit_rep_period_weights!(
     end
     x = projected_subgradient_descent!(x; subgradient, projection, tol = tol * 0.01, args...)
     x[x .< tol] .= 0.0  # replace insignificant small values with zeros
-    if weight_type == :convex
+    if weight_type == :convex || weight_type == :conical_bounded
       # Because some values might have been removed, convexity can be lost.
-      # To account for these, the weights are re-normalized.
-      x = x ./ sum(x)
+      # In the upper-bounded case, sometimes the sum can be slightly more than one
+      # due to floating-point arithmetic and rounding.
+      # To account for these cases, the weights are re-normalized.
+      sum_x = sum(x)
+      if weight_type == :convex || sum_x > 1.0
+        x = x ./ sum_x
+      end
     end
     if weight_type == :conical_bounded
       pop!(x)

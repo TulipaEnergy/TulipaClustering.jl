@@ -45,6 +45,6 @@ end
       TulipaClustering.write_csv_with_prefixes(joinpath(dir, "no-prefix.csv"), df)
       "no-prefix.csv" ∈ readdir(dir)
     end
-    #rm(dir; force = true, recursive = true)
+    rm(dir; force = true, recursive = true)
   end
 end
