@@ -6,6 +6,7 @@ using DataFrames
 using Distances
 using Clustering
 using SparseArrays
+using ProgressBars
 
 include("input-tables.jl")
 include("structures.jl")
