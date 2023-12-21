@@ -10,7 +10,7 @@
 [![Docs workflow Status](https://github.com/TulipaEnergy/TulipaClustering.jl/actions/workflows/Docs.yml/badge.svg?branch=main)](https://github.com/TulipaEnergy/TulipaClustering.jl/actions/workflows/Docs.yml?query=branch%3Amain)
 
 [![Coverage](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl)
-[![DOI](https://zenodo.org/badge/DOI/FIXME)](https://doi.org/FIXME)
+[![DOI](https://zenodo.org/badge/712902842.svg)](https://zenodo.org/doi/10.5281/zenodo.10419235)
 
 ## How to Cite
 
