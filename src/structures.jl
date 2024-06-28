@@ -21,12 +21,13 @@ mutable struct ClusteringResult
   weight_matrix::Union{SparseMatrixCSC{Float64, Int64}, Matrix{Float64}}
   clustering_matrix::Union{Matrix{Float64}, Nothing}
   rp_matrix::Union{Matrix{Float64}, Nothing}
+  auxiliary_data::Union{AuxiliaryClusteringData, Nothing}
 
-  function ClusteringResult(profiles, weight_matrix, clustering_matrix, rp_matrix)
-    return new(profiles, weight_matrix, clustering_matrix, rp_matrix)
+  function ClusteringResult(profiles, weight_matrix, clustering_matrix, rp_matrix, auxiliary_data)
+    return new(profiles, weight_matrix, clustering_matrix, rp_matrix, auxiliary_data)
   end
 
   function ClusteringResult(profiles, weight_matrix)
-    return new(profiles, weight_matrix, nothing, nothing)
+    return new(profiles, weight_matrix, nothing, nothing, nothing)
   end
 end

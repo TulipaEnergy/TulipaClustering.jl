@@ -33,5 +33,14 @@ function write_clustering_result_to_tables(
     "rep_periods_mapping",
   )
 
+  aux = clustering_result.auxiliary_data
+  num_rep_periods = size(clustering_result.weight_matrix, 2)
+  period_duration = fill(aux.period_duration, num_rep_periods)
+  period_duration[end] = aux.last_period_duration
+  DuckDB.register_data_frame(
+    connection,
+    DataFrame(rep_period = 1:num_rep_periods, num_timesteps = period_duration, resolution = 1.0),
+    "rep_periods_data",
+  )
   return nothing
 end
