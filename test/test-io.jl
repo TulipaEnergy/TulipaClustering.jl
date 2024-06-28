@@ -2,26 +2,37 @@
   @testset "Make sure clustering result is saved" begin
     dir = joinpath(OUTPUT_FOLDER, "temp")
 
-    n_periods = 3
-    n_steps = 2
-    nodes = ["a", "b"]
-    n_nodes = length(nodes)
-    technologies = ["solar", "wind"]
-    n_technologies = length(technologies)
-    df_length = n_periods * n_steps * n_technologies
-    df = DataFrame(
-      rep_period = repeat(1:n_periods, inner = n_steps * n_nodes),
-      timestep = repeat(1:n_steps, inner = n_nodes, outer = n_periods),
-      profile_name = repeat(nodes, outer = n_periods * n_steps),
-      value = convert.(Float64, 1:df_length) ./ df_length,
+    profile_names = ["solar", "wind"]
+    timeframe_duration = 20
+
+    profiles = DataFrame(
+      profile_name = repeat(profile_names, inner = timeframe_duration),
+      timestep = repeat(1:timeframe_duration, outer = length(profile_names)),
+      value = rand(length(profile_names) * timeframe_duration),
     )
-    weight_matrix = repeat(Matrix{Float64}(I, 3, 3), 10) |> sparse
-    clustering_data = TulipaClustering.ClusteringResult(df, weight_matrix)
+
+    num_rep_periods = 3
+    period_duration = 6
+
+    split_into_periods!(profiles; period_duration = period_duration)
+    clustering_data = find_representative_periods(profiles, num_rep_periods)
 
     connection = DBInterface.connect(DuckDB.DB)
     TulipaClustering.write_clustering_result_to_tables(connection, clustering_data)
 
     tables = DBInterface.execute(connection, "SHOW TABLES") |> DataFrame |> df -> df.name
-    @test sort(tables) == Union{Missing, String}["profiles_rep_periods", "rep_periods_mapping"]
+    @test sort(tables) ==
+          Union{Missing, String}["profiles_rep_periods", "rep_periods_data", "rep_periods_mapping"]
+
+    @testset "rep_periods_data" begin
+      rep_periods_data_df =
+        DBInterface.execute(connection, "SELECT * FROM rep_periods_data") |> DataFrame
+      @test rep_periods_data_df.rep_period == 1:num_rep_periods
+      @test rep_periods_data_df.num_timesteps == [
+        fill(period_duration, num_rep_periods - 1)
+        timeframe_duration % period_duration
+      ]
+      @test all(rep_periods_data_df.resolution .== 1)
+    end
   end
 end

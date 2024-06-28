@@ -484,5 +484,5 @@ function find_representative_periods(
     )
   end
 
-  return ClusteringResult(rp_df, weight_matrix, clustering_matrix, rp_matrix)
+  return ClusteringResult(rp_df, weight_matrix, clustering_matrix, rp_matrix, aux)
 end
