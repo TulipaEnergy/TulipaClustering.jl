@@ -1,45 +1,6 @@
 export read_clustering_data_from_csv_folder, write_clustering_result_to_csv_folder
 
 """
-    read_clustering_data_from_csv_folder(input_folder)
-
-Returns the data frame with all of the needed data from the `input_folder`.
-
-`assets-profiles.csv` should exist in the directory, following the [`TulipaClustering.AssetProfiles`](@ref) specification.
-"""
-function read_clustering_data_from_csv_folder(input_folder::AbstractString)::DataFrame
-  # Read the data
-  fillpath(filename) = joinpath(input_folder, filename)
-  df = read_csv_with_schema(fillpath("assets-profiles.csv"), AssetProfiles)
-  return df
-end
-
-"""
-    read_csv_with_schema(file_path, schema)
-
-Reads the csv with file_name at location path validating the data using the schema.
-It is assumes that the file's header is at the second row.
-The first row of the file contains some metadata information that is not used.
-"""
-function read_csv_with_schema(file_path, schema; csvargs...)
-  # Get the schema names and types in the form of Dictionaries
-  # TODO: This is copied from TulipaEnergyModel.jl; this should probably be in
-  # a separate module (TulipaIO.jl?) so that different modules can access the
-  # API methods to read and write the data.
-  col_types = zip(fieldnames(schema), fieldtypes(schema)) |> Dict
-  df = CSV.read(
-    file_path,
-    DataFrames.DataFrame;
-    header = 2,
-    types = col_types,
-    strict = true,
-    csvargs...,
-  )
-
-  return df
-end
-
-"""
   weight_matrix_to_df(weights)
 
 Converts a weight matrix from a (sparse) matrix, which is more convenient for

@@ -35,10 +35,16 @@ end
 end
 
 @testset "Weight fitting" begin
+  function get_data()
+    dir = joinpath(INPUT_FOLDER, "EU")
+    con = DBInterface.connect(DuckDB.DB)
+    create_tbl(con, joinpath(dir, "assets-profiles.csv"); name = "profiles")
+    return DBInterface.execute(con, "SELECT * FROM profiles") |> DataFrame
+  end
+
   @testset "Make sure that weight fitting works correctly for convex weights" begin
     @test begin
-      dir = joinpath(INPUT_FOLDER, "EU")
-      clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
+      clustering_data = get_data()
       split_into_periods!(clustering_data; period_duration = 24 * 7)
       clustering_result = find_representative_periods(
         clustering_data,
@@ -56,8 +62,7 @@ end
 
   @testset "Make sure that weight fitting works correctly for bounded conical weights" begin
     @test begin
-      dir = joinpath(INPUT_FOLDER, "EU")
-      clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
+      clustering_data = get_data()
       split_into_periods!(clustering_data; period_duration = 24 * 7)
       clustering_result = find_representative_periods(
         clustering_data,
@@ -76,8 +81,7 @@ end
     end
 
     @test begin
-      dir = joinpath(INPUT_FOLDER, "EU")
-      clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
+      clustering_data = get_data()
       split_into_periods!(clustering_data; period_duration = 24 * 7)
       clustering_result = find_representative_periods(
         clustering_data,
@@ -99,8 +103,7 @@ end
 
   @testset "Make sure that weight fitting works correctly for conical weights" begin
     @test begin
-      dir = joinpath(INPUT_FOLDER, "EU")
-      clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
+      clustering_data = get_data()
       split_into_periods!(clustering_data; period_duration = 24 * 7)
       clustering_result = find_representative_periods(
         clustering_data,

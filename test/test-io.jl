@@ -1,21 +1,3 @@
-@testset "Input validation" begin
-  @testset "Make sure that input validation fails for bad files" begin
-    dir = joinpath(INPUT_FOLDER, "bad")
-    @test_throws CSV.Error TulipaClustering.read_csv_with_schema(
-      joinpath(dir, "assets-profiles.csv"),
-      TulipaClustering.AssetProfiles,
-    )
-  end
-
-  @testset "Make sure that input files are read into a dataframe" begin
-    @test begin
-      dir = joinpath(INPUT_FOLDER, "EU")
-      clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
-      size(clustering_data) == (700800, 3)
-    end
-  end
-end
-
 @testset "Output saving" begin
   @testset "Make sure clustering result is saved" begin
     dir = joinpath(OUTPUT_FOLDER, "temp")
