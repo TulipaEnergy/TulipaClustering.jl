@@ -38,7 +38,7 @@ end
   function get_data()
     dir = joinpath(INPUT_FOLDER, "EU")
     con = DBInterface.connect(DuckDB.DB)
-    create_tbl(con, joinpath(dir, "assets-profiles.csv"); name = "profiles")
+    create_tbl(con, joinpath(dir, "profiles.csv"); name = "profiles")
     return DBInterface.execute(con, "SELECT * FROM profiles") |> DataFrame
   end
 
