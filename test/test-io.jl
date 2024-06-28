@@ -18,15 +18,10 @@
     weight_matrix = repeat(Matrix{Float64}(I, 3, 3), 10) |> sparse
     clustering_data = TulipaClustering.ClusteringResult(df, weight_matrix)
 
-    @test begin
-      TulipaClustering.write_clustering_result_to_csv_folder(dir, clustering_data)
-      ["assets-profiles.csv", "rp-weights.csv"] ⊆ readdir(dir)
-    end
+    connection = DBInterface.connect(DuckDB.DB)
+    TulipaClustering.write_clustering_result_to_tables(connection, clustering_data)
 
-    @test begin
-      TulipaClustering.write_csv_with_prefixes(joinpath(dir, "no-prefix.csv"), df)
-      "no-prefix.csv" ∈ readdir(dir)
-    end
-    rm(dir; force = true, recursive = true)
+    tables = DBInterface.execute(connection, "SHOW TABLES") |> DataFrame |> df -> df.name
+    @test sort(tables) == Union{Missing, String}["profiles_rep_periods", "rep_periods_mapping"]
   end
 end

@@ -5,6 +5,7 @@ using CSV
 using Clustering
 using DataFrames
 using Distances
+using DuckDB
 using ProgressBars
 using SparseArrays
 

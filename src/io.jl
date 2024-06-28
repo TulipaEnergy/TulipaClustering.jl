@@ -1,7 +1,7 @@
 export read_clustering_data_from_csv_folder, write_clustering_result_to_csv_folder
 
 """
-  weight_matrix_to_df(weights)
+    weight_matrix_to_df(weights)
 
 Converts a weight matrix from a (sparse) matrix, which is more convenient for
 internal computations, to a dataframe, which is better for saving into a file.
@@ -16,51 +16,22 @@ function weight_matrix_to_df(weights::Union{SparseMatrixCSC{Float64, Int64}, Mat
 end
 
 """
-    write_clustering_result_to_csv_folder(output_folder, clustering_result)
+    write_clustering_result_to_table(connection, clustering_result)
 
 Writes a [`TulipaClustering.ClusteringResult`](@ref) to CSV files in the
 `output_folder`.
 """
-function write_clustering_result_to_csv_folder(
-  output_folder::AbstractString,
+function write_clustering_result_to_tables(
+  connection,
   clustering_result::TulipaClustering.ClusteringResult,
 )
-  mkpath(output_folder)
+  DuckDB.register_data_frame(connection, clustering_result.profiles, "profiles_rep_periods")
 
-  fillpath(filename) = joinpath(output_folder, filename)
-
-  write_csv_with_prefixes(
-    fillpath("assets-profiles.csv"),
-    clustering_result.profiles,
-    prefixes = [missing, missing, missing, "MW"],
-  )
-
-  write_csv_with_prefixes(
-    fillpath("rp-weights.csv"),
+  DuckDB.register_data_frame(
+    connection,
     weight_matrix_to_df(clustering_result.weight_matrix),
-    prefixes = [missing, missing, missing],
+    "rep_periods_mapping",
   )
 
-  return nothing
-end
-
-"""
-    write_csv_with_prefixes(file_path, df; prefixes)
-
-Writes the dataframe `df` into a csv file at `file_path`. If `prefixes` are
-provided, they are written above the column names. For example, these prefixes
-can contain metadata describing the columns.
-"""
-function write_csv_with_prefixes(file_path, df; prefixes = nothing, csvargs...)
-  if isnothing(prefixes) || length(prefixes) == 0
-    # If there are no prefixes, just write the data frame into the file
-    CSV.write(file_path, df; strict = true, csvargs...)
-  else
-    # Convert the prefixes to a one-row table for `CSV.write` to use
-    prefixes = reshape(prefixes, (1, length(prefixes))) |> Tables.table
-    # First we write the prefixes, then we append the data drom the dataframe
-    CSV.write(file_path, prefixes; header = false, strict = true, csvargs...)
-    CSV.write(file_path, df; header = true, append = true, strict = true, csvargs...)
-  end
   return nothing
 end
