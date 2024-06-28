@@ -3,17 +3,17 @@ export find_representative_periods, split_into_periods!
 """
     combine_periods!(df)
 
-Modifies a dataframe `df` by combining the columns `time_step` and `period`
-into a single column `time_step` of global time steps. The period duration is
+Modifies a dataframe `df` by combining the columns `timestep` and `period`
+into a single column `timestep` of global time steps. The period duration is
 inferred automatically from the maximum time step value, assuming that
 periods start with time step 1.
 
 # Examples
 
 ```
-julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 1:3])
+julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :value => 1:3])
 3×3 DataFrame
- Row │ period  time_step  value
+ Row │ period  timestep  value
      │ Int64   Int64      Int64
 ─────┼──────────────────────────
    1 │      1          1      1
@@ -22,7 +22,7 @@ julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 
 
 julia> TulipaClustering.combine_periods!(df)
 3×2 DataFrame
- Row │ time_step  value
+ Row │ timestep  value
      │ Int64      Int64
 ─────┼──────────────────
    1 │         1      1
@@ -31,26 +31,26 @@ julia> TulipaClustering.combine_periods!(df)
 ```
 """
 function combine_periods!(df::AbstractDataFrame)
-  # First check that df contains a time_step column
-  if columnindex(df, :time_step) == 0
-    throw(DomainError(df, "DataFrame does not contain a column `time_step`"))
+  # First check that df contains a timestep column
+  if columnindex(df, :timestep) == 0
+    throw(DomainError(df, "DataFrame does not contain a column `timestep`"))
   end
   if columnindex(df, :period) == 0
     return  # if there is no column df.period, leave df as is
   end
-  max_t = maximum(df.time_step)
-  df.time_step .= (df.period .- 1) .* max_t .+ df.time_step
+  max_t = maximum(df.timestep)
+  df.timestep .= (df.period .- 1) .* max_t .+ df.timestep
   select!(df, Not(:period))
 end
 
 """
     split_into_periods!(df; period_duration=nothing)
 
-Modifies a dataframe `df` by separating the column `time_step` into periods of
+Modifies a dataframe `df` by separating the column `timestep` into periods of
 length `period_duration`. The new data is written into two columns:
 
   - `period`: the period ID;
-  - `time_step`: the time step within the current period.
+  - `timestep`: the time step within the current period.
 
 If `period_duration` is `nothing`, then all of the time steps are within the
 same period with index 1.
@@ -58,9 +58,9 @@ same period with index 1.
 # Examples
 
 ```
-julia> df = DataFrame([:time_step => 1:4, :value => 5:8])
+julia> df = DataFrame([:timestep => 1:4, :value => 5:8])
 4×2 DataFrame
- Row │ time_step  value
+ Row │ timestep  value
      │ Int64      Int64
 ─────┼──────────────────
    1 │         1      5
@@ -70,7 +70,7 @@ julia> df = DataFrame([:time_step => 1:4, :value => 5:8])
 
 julia> TulipaClustering.split_into_periods!(df; period_duration=2)
 4×3 DataFrame
- Row │ period  time_step  value
+ Row │ period  timestep  value
      │ Int64   Int64      Int64
 ─────┼──────────────────────────
    1 │      1          1      5
@@ -78,9 +78,9 @@ julia> TulipaClustering.split_into_periods!(df; period_duration=2)
    3 │      2          1      7
    4 │      2          2      8
 
-julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 1:3])
+julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :value => 1:3])
 3×3 DataFrame
- Row │ period  time_step  value
+ Row │ period  timestep  value
      │ Int64   Int64      Int64
 ─────┼──────────────────────────
    1 │      1          1      1
@@ -89,7 +89,7 @@ julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :value => 
 
 julia> TulipaClustering.split_into_periods!(df; period_duration=1)
 3×3 DataFrame
- Row │ period  time_step  value
+ Row │ period  timestep  value
      │ Int64   Int64      Int64
 ─────┼──────────────────────────
    1 │      1          1      1
@@ -98,7 +98,7 @@ julia> TulipaClustering.split_into_periods!(df; period_duration=1)
 
 julia> TulipaClustering.split_into_periods!(df)
 3×3 DataFrame
- Row │ period  time_step  value
+ Row │ period  timestep  value
      │ Int64   Int64      Int64
 ─────┼──────────────────────────
    1 │      1          1      1
@@ -116,13 +116,13 @@ function split_into_periods!(df::AbstractDataFrame; period_duration::Union{Int, 
     insertcols!(df, :period => 1)
   else
     # Otherwise, split the time step index using 1-based modular arithmetic
-    indices = fldmod1.(df.time_step, period_duration)  # find the new indices
+    indices = fldmod1.(df.timestep, period_duration)  # find the new indices
     indices = reinterpret(reshape, Int, indices)       # change to an array for slicing
 
     df.period = indices[1, :]     # first row is the floor quotients, i.e., the period indices
-    df.time_step = indices[2, :]  # second row is the remainders, i.e., the new time steps
+    df.timestep = indices[2, :]  # second row is the remainders, i.e., the new time steps
   end
-  select!(df, :period, :time_step, :)  # move the time-related columns to the front
+  select!(df, :period, :timestep, :)  # move the time-related columns to the front
 end
 
 """
@@ -134,9 +134,9 @@ columns that act as keys (i.e., unique data identifiers within different periods
 # Examples
 
 ```
-julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :a .=> "a", :value => 1:3])
+julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :a .=> "a", :value => 1:3])
 3×4 DataFrame
- Row │ period  time_step  a       value
+ Row │ period  timestep  a       value
      │ Int64   Int64      String  Int64
 ─────┼──────────────────────────────────
    1 │      1          1  a           1
@@ -145,7 +145,7 @@ julia> df = DataFrame([:period => [1, 1, 2], :time_step => [1, 2, 1], :a .=> "a"
 
 julia> TulipaClustering.validate_df_and_find_key_columns(df)
 2-element Vector{Symbol}:
- :time_step
+ :timestep
  :a
 
 julia> df = DataFrame([:value => 1])
@@ -161,13 +161,13 @@ ERROR: DomainError with 1×1 DataFrame
      │ Int64
 ─────┼───────
    1 │     1:
-DataFrame must contain columns `time_step` and `value`
+DataFrame must contain columns `timestep` and `value`
 ```
 """
 function validate_df_and_find_key_columns(df::AbstractDataFrame)::Vector{Symbol}
   columns = propertynames(df)
-  if :time_step ∉ columns || :value ∉ columns
-    throw(DomainError(df, "DataFrame must contain columns `time_step` and `value`"))
+  if :timestep ∉ columns || :value ∉ columns
+    throw(DomainError(df, "DataFrame must contain columns `timestep` and `value`"))
   end
   if :period ∉ columns
     throw(
@@ -196,8 +196,8 @@ Calculates auxiliary data associated with the `clustering_data`. These include:
 function find_auxiliary_data(clustering_data::AbstractDataFrame)
   key_columns = validate_df_and_find_key_columns(clustering_data)
   n_periods = maximum(clustering_data.period)
-  period_duration = maximum(clustering_data.time_step)
-  last_period_duration = maximum(clustering_data[clustering_data.period .== n_periods, :time_step])
+  period_duration = maximum(clustering_data.timestep)
+  last_period_duration = maximum(clustering_data[clustering_data.period .== n_periods, :timestep])
 
   return AuxiliaryClusteringData(key_columns, period_duration, last_period_duration, n_periods)
 end
@@ -220,9 +220,9 @@ function find_period_weights(
     complete_period_weight = 1.0
     incomplete_period_weight = nothing
   elseif drop_incomplete_periods
-    full_period_time_steps = period_duration * (n_periods - 1)
-    total_time_steps = full_period_time_steps + last_period_duration
-    complete_period_weight = total_time_steps / full_period_time_steps
+    full_period_timesteps = period_duration * (n_periods - 1)
+    total_timesteps = full_period_timesteps + last_period_duration
+    complete_period_weight = total_timesteps / full_period_timesteps
     incomplete_period_weight = nothing
   else
     complete_period_weight = 1.0
@@ -241,9 +241,9 @@ format and returned alongside the matrix.
 # Examples
 
 ```
-julia> df = DataFrame([:period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
+julia> df = DataFrame([:period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
 4×4 DataFrame
- Row │ period  time_step  a       value
+ Row │ period  timestep  a       value
      │ Int64   Int64      String  Int64
 ─────┼──────────────────────────────────
    1 │      1          1  a           1
@@ -251,14 +251,14 @@ julia> df = DataFrame([:period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], :a .
    3 │      2          1  a           3
    4 │      2          2  a           4
 
-julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:time_step, :a]); m
+julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:timestep, :a]); m
 2×2 Matrix{Float64}:
  1.0  3.0
  2.0  4.0
 
 julia> k
 2×2 DataFrame
- Row │ time_step  a
+ Row │ timestep  a
      │ Int64      String
 ─────┼───────────────────
    1 │         1  a
@@ -286,9 +286,9 @@ julia> m = [1.0 3.0; 2.0 4.0]
  1.0  3.0
  2.0  4.0
 
-julia> k = DataFrame([:time_step => 1:2, :a .=> "a"])
+julia> k = DataFrame([:timestep => 1:2, :a .=> "a"])
 2×2 DataFrame
- Row │ time_step  a
+ Row │ timestep  a
      │ Int64      String
 ─────┼───────────────────
    1 │         1  a
@@ -296,7 +296,7 @@ julia> k = DataFrame([:time_step => 1:2, :a .=> "a"])
 
 julia> TulipaClustering.matrix_and_keys_to_df(m, k)
 4×4 DataFrame
- Row │ rep_period  time_step  a       value
+ Row │ rep_period  timestep  a       value
      │ Int64       Int64      String  Float64
 ─────┼────────────────────────────────────────
    1 │          1          1  a           1.0
@@ -311,7 +311,7 @@ function matrix_and_keys_to_df(matrix::Matrix{Float64}, keys::AbstractDataFrame)
   result = hcat(keys, result)            # prepend the previously deleted columns
   result = stack(result, variable_name = :rep_period) |> dropmissing # convert from wide to long format
   result.rep_period = parse.(Int, result.rep_period)  # change the type of rep_period column to Int
-  select!(result, :rep_period, :time_step, :)         # move the rep_period column to the front
+  select!(result, :rep_period, :timestep, :)         # move the rep_period column to the front
 
   return result
 end
@@ -325,9 +325,9 @@ representative period with index `rp` to `df`, using `key_columns` as keys.
 # Examples
 
 ```
-julia> source_df = DataFrame([:period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], :a .=> "b", :value => 5:8])
+julia> source_df = DataFrame([:period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "b", :value => 5:8])
 4×4 DataFrame
- Row │ period  time_step  a       value
+ Row │ period  timestep  a       value
      │ Int64   Int64      String  Int64
 ─────┼──────────────────────────────────
    1 │      1          1  b           5
@@ -335,9 +335,9 @@ julia> source_df = DataFrame([:period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2
    3 │      2          1  b           7
    4 │      2          2  b           8
 
-julia> df = DataFrame([:rep_period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
+julia> df = DataFrame([:rep_period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
 4×4 DataFrame
- Row │ rep_period  time_step  a       value
+ Row │ rep_period  timestep  a       value
      │ Int64       Int64      String  Int64
 ─────┼──────────────────────────────────────
    1 │          1          1  a           1
@@ -345,9 +345,9 @@ julia> df = DataFrame([:rep_period => [1, 1, 2, 2], :time_step => [1, 2, 1, 2], 
    3 │          2          1  a           3
    4 │          2          2  a           4
 
-julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df, period = 2, rp = 3, key_columns = [:time_step, :a])
+julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df, period = 2, rp = 3, key_columns = [:timestep, :a])
 6×4 DataFrame
- Row │ rep_period  time_step  a       value
+ Row │ rep_period  timestep  a       value
      │ Int64       Int64      String  Int64
 ─────┼──────────────────────────────────────
    1 │          1          1  a           1
