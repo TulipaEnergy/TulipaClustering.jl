@@ -1,21 +1,3 @@
-@testset "Input validation" begin
-  @testset "Make sure that input validation fails for bad files" begin
-    dir = joinpath(INPUT_FOLDER, "bad")
-    @test_throws CSV.Error TulipaClustering.read_csv_with_schema(
-      joinpath(dir, "assets-profiles.csv"),
-      TulipaClustering.AssetProfiles,
-    )
-  end
-
-  @testset "Make sure that input files are read into a dataframe" begin
-    @test begin
-      dir = joinpath(INPUT_FOLDER, "EU")
-      clustering_data = TulipaClustering.read_clustering_data_from_csv_folder(dir)
-      size(clustering_data) == (700800, 3)
-    end
-  end
-end
-
 @testset "Output saving" begin
   @testset "Make sure clustering result is saved" begin
     dir = joinpath(OUTPUT_FOLDER, "temp")
@@ -36,15 +18,10 @@ end
     weight_matrix = repeat(Matrix{Float64}(I, 3, 3), 10) |> sparse
     clustering_data = TulipaClustering.ClusteringResult(df, weight_matrix)
 
-    @test begin
-      TulipaClustering.write_clustering_result_to_csv_folder(dir, clustering_data)
-      ["assets-profiles.csv", "rp-weights.csv"] ⊆ readdir(dir)
-    end
+    connection = DBInterface.connect(DuckDB.DB)
+    TulipaClustering.write_clustering_result_to_tables(connection, clustering_data)
 
-    @test begin
-      TulipaClustering.write_csv_with_prefixes(joinpath(dir, "no-prefix.csv"), df)
-      "no-prefix.csv" ∈ readdir(dir)
-    end
-    rm(dir; force = true, recursive = true)
+    tables = DBInterface.execute(connection, "SHOW TABLES") |> DataFrame |> df -> df.name
+    @test sort(tables) == Union{Missing, String}["profiles_rep_periods", "rep_periods_mapping"]
   end
 end

@@ -1,10 +1,12 @@
 using CSV
 using DataFrames
+using Distances
+using DuckDB
 using LinearAlgebra
 using SparseArrays
-using TulipaClustering
-using Distances
 using Test
+using TulipaClustering
+using TulipaIO
 
 # Folders names
 const INPUT_FOLDER = joinpath(@__DIR__, "inputs")

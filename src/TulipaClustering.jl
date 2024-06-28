@@ -2,13 +2,13 @@ module TulipaClustering
 
 # Packages
 using CSV
+using Clustering
 using DataFrames
 using Distances
-using Clustering
-using SparseArrays
+using DuckDB
 using ProgressBars
+using SparseArrays
 
-include("input-tables.jl")
 include("structures.jl")
 include("io.jl")
 include("weight_fitting.jl")
