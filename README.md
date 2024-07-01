@@ -18,7 +18,8 @@ If you use TulipaClustering.jl in your work, please cite using the reference giv
 
 ## Contributing
 
-If you want to make contributions of any kind, please first take a look at our [contributing guide directly on GitHub](docs/src/contributing.md) or the [contributing page on the website](https://TulipaEnergy.github.io/TulipaClustering.jl/dev/contributing/).
+We follow the same guidelines as on our main repository, [TulipaEnergyModel](https://github.com/TulipaEnergy/TulipaEnergyModel.jl).
+Please read these guidelines [CONTRIBUTING.md](https://github.com/TulipaEnergy/TulipaEnergyModel.jl/blob/main/CONTRIBUTING.md) and our [README.dev](https://github.com/TulipaEnergy/TulipaEnergyModel.jl/blob/main/README.dev.md) to get you started.
 
 ---
 
