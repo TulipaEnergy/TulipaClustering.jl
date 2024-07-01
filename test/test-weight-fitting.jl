@@ -15,6 +15,23 @@
       TulipaClustering.project_onto_simplex(x) ≈ [0.0, 1.0]
     end
   end
+
+  @testset "Make sure that projection onto standard basis works correctly" begin
+    @test begin
+      x = [1.0, 10.0]
+      TulipaClustering.project_onto_standard_basis(x) == [0.0, 1.0]
+    end
+
+    @test begin
+      x = [10.0, 1.0]
+      TulipaClustering.project_onto_standard_basis(x) == [1.0, 0.0]
+    end
+
+    @test begin
+      x = [-2.0, 1.0]
+      TulipaClustering.project_onto_standard_basis(x) == [0.0, 1.0]
+    end
+  end
 end
 
 @testset "Subgradient descent" begin
@@ -40,6 +57,23 @@ end
     con = DBInterface.connect(DuckDB.DB)
     create_tbl(con, joinpath(dir, "profiles.csv"); name = "profiles")
     return DBInterface.execute(con, "SELECT * FROM profiles") |> DataFrame
+  end
+
+  @testset "Make sure that weight fitting works correctly for Dirac weights" begin
+    @test begin
+      clustering_data = get_data()
+      split_into_periods!(clustering_data; period_duration = 24 * 7)
+      clustering_result = find_representative_periods(
+        clustering_data,
+        10;
+        drop_incomplete_last_period = false,
+        method = :k_means,
+        distance = SqEuclidean(),
+        init = :kmcen,
+      )
+      TulipaClustering.fit_rep_period_weights!(clustering_result; weight_type = :dirac, niters = 5)
+      all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .== 1.0)
+    end
   end
 
   @testset "Make sure that weight fitting works correctly for convex weights" begin

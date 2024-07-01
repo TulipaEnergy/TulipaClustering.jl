@@ -62,11 +62,25 @@ end
 """
   project_onto_nonnegative_orthant(vector)
 
-Projects `vector` onto the nonnegative_orthant. This projection is trivial:
+Projects `vector` onto the nonnegative orthant. This projection is trivial:
 replace negative components of the vector with zeros.
 """
 function project_onto_nonnegative_orthant(vector::Vector{Float64})
   return max.(vector, 0.0)
+end
+
+"""
+  project_onto_standard_basis(vector)
+
+Projects `vector` onto the standard basis. This projection is trivial:
+replace all components of the vector with zeros, except for the largest one,
+which is replaced with one.
+"""
+function project_onto_standard_basis(vector::Vector{Float64})
+  i = argmax(vector)
+  result = zeros(size(vector))
+  result[i] = 1.0
+  return result
 end
 
 """
@@ -166,7 +180,9 @@ function fit_rep_period_weights!(
   args...,
 )
   # Determine the appropriate projection method
-  if weight_type == :convex
+  if weight_type == :dirac
+    projection = project_onto_standard_basis
+  elseif weight_type == :convex
     projection = project_onto_simplex
   elseif weight_type == :conical
     projection = project_onto_nonnegative_orthant
