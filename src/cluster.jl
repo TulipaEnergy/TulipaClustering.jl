@@ -406,12 +406,24 @@ function find_representative_periods(
   distance::SemiMetric = SqEuclidean(),
   args...,
 )
+  # Check that the number of RPs makes sense. The first check can be done immediately,
+  # The second check is done after we compute the auxiliary data
+  if n_rp < 1
+    throw(ArgumentError("The number of representative periods is $n_rp but has to be at least 1."))
+  end
 
   # Find auxiliary data and pre-compute additional constants that are used multiple times alter
   aux = find_auxiliary_data(clustering_data)
+  n_periods = aux.n_periods
+  if n_rp > n_periods
+    throw(
+      ArgumentError(
+        "The number of representative periods exceeds the total number of periods, $n_rp > $n_periods.",
+      ),
+    )
+  end
   has_incomplete_last_period = aux.last_period_duration ≠ aux.period_duration
   is_last_period_excluded = has_incomplete_last_period && !drop_incomplete_last_period
-  n_periods = aux.n_periods
   n_complete_periods = has_incomplete_last_period ? n_periods - 1 : n_periods
 
   # 2. Find the weights of the two types of periods and pre-build the weight matrix.
