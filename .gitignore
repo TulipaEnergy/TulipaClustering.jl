@@ -3,6 +3,10 @@
 *.jl.mem
 Manifest.toml
 docs/build/
+env
+/.benchmarkci
+/benchmark/*.json
+coverage/
 *.rej
 node_modules
 .DS_Store
