@@ -309,7 +309,7 @@ function matrix_and_keys_to_df(matrix::Matrix{Float64}, keys::AbstractDataFrame)
   n_columns = size(matrix, 2)
   result = DataFrame(matrix, string.(1:n_columns))
   result = hcat(keys, result)            # prepend the previously deleted columns
-  result = stack(result, variable_name = :rep_period) |> dropmissing # convert from wide to long format
+  result = stack(result; variable_name = :rep_period) |> dropmissing # convert from wide to long format
   result.rep_period = parse.(Int, result.rep_period)  # change the type of rep_period column to Int
   select!(result, :rep_period, :timestep, :)         # move the rep_period column to the front
 
@@ -475,7 +475,7 @@ function find_representative_periods(
   end
 
   # Fill in the weight matrix using the assignments
-  for (p, rp) ∈ enumerate(assignments)
+  for (p, rp) in enumerate(assignments)
     weight_matrix[p, rp] = complete_period_weight
   end
 

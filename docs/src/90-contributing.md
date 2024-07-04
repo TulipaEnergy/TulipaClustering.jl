@@ -1,10 +1,10 @@
-# Contributing guidelines
+# [Contributing guidelines](@id contributing)
 
 First of all, thanks for the interest!
 
 We welcome all kinds of contribution, including, but not limited to code, documentation, examples, configuration, issue creating, etc.
 
-Be polite and respectful.
+Be polite and respectful, and follow the code of conduct.
 
 ## Bug reports and discussions
 
@@ -18,9 +18,8 @@ If you found an issue that interests you, comment on that issue what your plans 
 If the solution to the issue is clear, you can immediately create a pull request (see below).
 Otherwise, say what your proposed solution is and wait for a discussion around it.
 
-> **Tip**
->
-> Feel free to ping us after a few days if there are no responses.
+!!! tip
+    Feel free to ping us after a few days if there are no responses.
 
-If your solution involves code (or something that requires running the package locally), check the [developer documentation](https://github.com/TulipaEnergy/TulipaEnergyModel.jl/blob/main/README.dev.md) of [TulipaEnergyModel.jl](https://github.com/TulipaEnergy/TulipaEnergyModel.jl).
+If your solution involves code (or something that requires running the package locally), check the [developer documentation](91-developer.md).
 Otherwise, you can use the GitHub interface directly to create your pull request.
