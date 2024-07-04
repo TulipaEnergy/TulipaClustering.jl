@@ -5,9 +5,9 @@
     profile_names = ["solar", "wind"]
     timeframe_duration = 20
 
-    profiles = DataFrame(
-      profile_name = repeat(profile_names, inner = timeframe_duration),
-      timestep = repeat(1:timeframe_duration, outer = length(profile_names)),
+    profiles = DataFrame(;
+      profile_name = repeat(profile_names; inner = timeframe_duration),
+      timestep = repeat(1:timeframe_duration; outer = length(profile_names)),
       value = rand(length(profile_names) * timeframe_duration),
     )
 

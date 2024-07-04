@@ -1,14 +1,12 @@
 # Changes here will be overwritten by Copier
-AddMacToCI: true
-AddWinToCI: true
+AnswerStrategy: recommended
 AuthorEmail: G.Neustroev@tudelft.nl
 AuthorName: Greg Neustroev
+Indentation: 2
 JuliaMinVersion: '1.6'
 License: Apache-2.0
 PackageName: TulipaClustering
 PackageOwner: TulipaEnergy
 PackageUUID: 314fac8b-c762-4aa3-9d12-851379729163
-RunJuliaNightlyOnCI: false
-UseCirrusCI: false
-_commit: v0.2.3
+_commit: v0.7.0
 _src_path: https://github.com/abelsiqueira/COPIERTemplate.jl

@@ -10,7 +10,7 @@ Zero weights are dropped to avoid cluttering the dataframe.
 function weight_matrix_to_df(weights::Union{SparseMatrixCSC{Float64, Int64}, Matrix{Float64}})
   weights = sparse(weights)
   periods, rep_periods, values = weights |> findnz
-  result = DataFrame(period = periods, rep_period = rep_periods, weight = values)
+  result = DataFrame(; period = periods, rep_period = rep_periods, weight = values)
   sort!(result, [:period, :rep_period])
   return result
 end
@@ -39,7 +39,7 @@ function write_clustering_result_to_tables(
   period_duration[end] = aux.last_period_duration
   DuckDB.register_data_frame(
     connection,
-    DataFrame(rep_period = 1:num_rep_periods, num_timesteps = period_duration, resolution = 1.0),
+    DataFrame(; rep_period = 1:num_rep_periods, num_timesteps = period_duration, resolution = 1.0),
     "rep_periods_data",
   )
   return nothing

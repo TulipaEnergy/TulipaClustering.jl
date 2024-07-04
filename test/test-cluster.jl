@@ -53,7 +53,7 @@ end
   @testset "Make sure that period splitting works on clustering data" begin
     @test begin
       clustering_data = DataFrame([
-        :timestep => repeat(1:4, inner = 2),
+        :timestep => repeat(1:4; inner = 2),
         :profile_name => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
       ])
@@ -100,8 +100,8 @@ end
   @testset "Make sure that k-means returns the original periods when n_rp == n_periods" begin
     @test begin
       clustering_data = DataFrame([
-        :period => repeat(1:2, inner = 4),
-        :timestep => repeat(1:2, inner = 2, outer = 2),
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
       ])
@@ -113,8 +113,8 @@ end
 
     @test begin
       clustering_data = DataFrame([
-        :period => repeat(1:2, inner = 4),
-        :timestep => repeat(1:2, inner = 2, outer = 2),
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
       ])
@@ -127,8 +127,8 @@ end
 
     @test begin
       clustering_data = DataFrame([
-        :period => repeat(1:3, inner = 4),
-        :timestep => repeat(1:2, inner = 2, outer = 3),
+        :period => repeat(1:3; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
         :value => 5:16,
       ])
@@ -150,8 +150,8 @@ end
   @testset "Make sure that k-medoids returns the original periods when n_rp == n_periods" begin
     @test begin
       clustering_data = DataFrame([
-        :period => repeat(1:2, inner = 4),
-        :timestep => repeat(1:2, inner = 2, outer = 2),
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
       ])
@@ -163,8 +163,8 @@ end
 
     @test begin
       clustering_data = DataFrame([
-        :period => repeat(1:2, inner = 4),
-        :timestep => repeat(1:2, inner = 2, outer = 2),
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
       ])
@@ -177,8 +177,8 @@ end
 
     @test begin
       clustering_data = DataFrame([
-        :period => repeat(1:3, inner = 4),
-        :timestep => repeat(1:2, inner = 2, outer = 3),
+        :period => repeat(1:3; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
         :value => 5:16,
       ])
@@ -200,8 +200,8 @@ end
   @testset "Make sure that clustering fails when incorrect method is given" begin
     @test_throws ArgumentError begin
       clustering_data = DataFrame([
-        :period => repeat(1:2, inner = 4),
-        :timestep => repeat(1:2, inner = 2, outer = 2),
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
       ])

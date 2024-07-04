@@ -72,7 +72,7 @@ end
         init = :kmcen,
       )
       TulipaClustering.fit_rep_period_weights!(clustering_result; weight_type = :dirac, niters = 5)
-      all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .== 1.0)
+      all(sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2) .== 1.0)
     end
   end
 
@@ -90,7 +90,7 @@ end
       )
       TulipaClustering.fit_rep_period_weights!(clustering_result; weight_type = :convex, niters = 5)
       sum(clustering_result.weight_matrix) ≈ round(365 / 7, RoundUp) &&
-        all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .≈ 1.0)
+        all(sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2) .≈ 1.0)
     end
   end
 
@@ -111,7 +111,7 @@ end
         weight_type = :conical_bounded,
         niters = 5,
       )
-      all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .≤ 1.0)
+      all(sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2) .≤ 1.0)
     end
 
     @test begin
@@ -131,7 +131,7 @@ end
         niters = 5,
         show_progress = true,
       )
-      all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .≤ 1.0)
+      all(sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2) .≤ 1.0)
     end
   end
 
@@ -152,7 +152,7 @@ end
         weight_type = :conical,
         niters = 5,
       )
-      all(sum(clustering_result.weight_matrix[1:(end - 1), :], dims = 2) .≥ 0.0)
+      all(sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2) .≥ 0.0)
     end
   end
 

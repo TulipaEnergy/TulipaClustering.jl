@@ -19,7 +19,7 @@ function project_onto_simplex(vector::Vector{Float64})
   ṽ = Vector{Float64}()
   ρ = vector[1] - 1.0
   # step 2
-  for y ∈ vector[2:end]
+  for y in vector[2:end]
     if y > ρ
       ρ += (y - ρ) / (length(v) + 1)
       if ρ > y - 1.0
@@ -32,7 +32,7 @@ function project_onto_simplex(vector::Vector{Float64})
     end
   end
   # step 3
-  for y ∈ ṽ
+  for y in ṽ
     if y > ρ
       push!(v, y)
       ρ += (y - ρ) / length(v)
@@ -42,7 +42,7 @@ function project_onto_simplex(vector::Vector{Float64})
   while true
     length_v = length(v)
     to_be_removed = Vector{Int}()
-    for (i, y) ∈ enumerate(v)
+    for (i, y) in enumerate(v)
       if y ≤ ρ
         push!(to_be_removed, i)
         length_v -= 1
@@ -124,7 +124,7 @@ function projected_subgradient_descent!(
     G = zeros(length(x))
   end
 
-  for _ ∈ 1:niters
+  for _ in 1:niters
     g = subgradient(x)  # find the subgradient
     if adaptive_grad    # find the learning rate
       G += g .^ 2
@@ -210,7 +210,7 @@ function fit_rep_period_weights!(
     periods = 1:n_periods
   end
 
-  for period ∈ periods
+  for period in periods
     # TODO: this can be parallelized; investigate
     target_vector = clustering_matrix[:, period]
     subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
