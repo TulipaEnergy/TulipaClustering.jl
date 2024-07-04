@@ -34,5 +34,13 @@
       ]
       @test all(rep_periods_data_df.resolution .== 1)
     end
+
+    @testset "ClusteringResult constructor without auxiliary data" begin
+      clustering_result =
+        TulipaClustering.ClusteringResult(clustering_data.profiles, clustering_data.weight_matrix)
+
+      @test clustering_result.profiles == clustering_data.profiles
+      @test clustering_result.weight_matrix == clustering_data.weight_matrix
+    end
   end
 end
