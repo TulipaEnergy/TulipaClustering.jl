@@ -214,8 +214,8 @@ end
 @testset "Bad number of representative periods" begin
   @testset "Test that non-positive numbers of RPs throw correctly" begin
     clustering_data = DataFrame([
-      :period => repeat(1:2, inner = 4),
-      :timestep => repeat(1:2, inner = 2, outer = 2),
+      :period => repeat(1:2; inner = 4),
+      :timestep => repeat(1:2; inner = 2, outer = 2),
       :technology => repeat(["Solar", "Nuclear"], 4),
       :value => 5:12,
     ])
