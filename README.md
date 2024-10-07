@@ -10,7 +10,7 @@
 [![Coverage](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/TulipaEnergy/TulipaClustering.jl)
 [![DOI](https://zenodo.org/badge/712902842.svg)](https://zenodo.org/doi/10.5281/zenodo.10419235)
 [![Contributor Covenant](https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg)](CODE_OF_CONDUCT.md)
-[![All Contributors](https://img.shields.io/github/all-contributors/TulipaEnergy/TulipaClustering.jl?labelColor=5e1ec7&color=c0ffee&style=flat-square))](#contributors)
+[![All Contributors](https://img.shields.io/github/all-contributors/TulipaEnergy/TulipaClustering.jl?labelColor=5e1ec7&color=c0ffee&style=flat-square)](#contributors)
 
 ## How to Cite
 
@@ -18,7 +18,7 @@ If you use TulipaClustering.jl in your work, please cite using the reference giv
 
 ## Contributing
 
-If you want to make contributions of any kind, please first that a look into our [contributing guide directly on GitHub](docs/src/90-contributing.md) or the [contributing page on the website](https://TulipaEnergy.github.io/TulipaClustering.jl/dev/contributing/).
+If you want to make contributions of any kind, please first that a look into our [contributing guide directly on GitHub](docs/src/90-contributing.md) or the [contributing page on the website](https://TulipaEnergy.github.io/TulipaClustering.jl/dev/90-contributing/).
 
 ---
 
