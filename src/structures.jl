@@ -8,7 +8,12 @@ mutable struct AuxiliaryClusteringData
   last_period_duration::Int
   n_periods::Int
 
-  function AuxiliaryClusteringData(key_columns, period_duration, last_period_duration, n_periods)
+  function AuxiliaryClusteringData(
+    key_columns,
+    period_duration,
+    last_period_duration,
+    n_periods,
+  )
     return new(key_columns, period_duration, last_period_duration, n_periods)
   end
 end
@@ -23,7 +28,13 @@ mutable struct ClusteringResult
   rp_matrix::Union{Matrix{Float64}, Nothing}
   auxiliary_data::Union{AuxiliaryClusteringData, Nothing}
 
-  function ClusteringResult(profiles, weight_matrix, clustering_matrix, rp_matrix, auxiliary_data)
+  function ClusteringResult(
+    profiles,
+    weight_matrix,
+    clustering_matrix,
+    rp_matrix,
+    auxiliary_data,
+  )
     return new(profiles, weight_matrix, clustering_matrix, rp_matrix, auxiliary_data)
   end
 

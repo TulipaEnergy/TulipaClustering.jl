@@ -106,7 +106,10 @@ julia> TulipaClustering.split_into_periods!(df)
    3 │      1          3      3
 ```
 """
-function split_into_periods!(df::AbstractDataFrame; period_duration::Union{Int, Nothing} = nothing)
+function split_into_periods!(
+  df::AbstractDataFrame;
+  period_duration::Union{Int, Nothing} = nothing,
+)
   # If the periods already exist, combine them into the time steps if necessary
   combine_periods!(df)
 
@@ -197,9 +200,15 @@ function find_auxiliary_data(clustering_data::AbstractDataFrame)
   key_columns = validate_df_and_find_key_columns(clustering_data)
   n_periods = maximum(clustering_data.period)
   period_duration = maximum(clustering_data.timestep)
-  last_period_duration = maximum(clustering_data[clustering_data.period .== n_periods, :timestep])
+  last_period_duration =
+    maximum(clustering_data[clustering_data.period .== n_periods, :timestep])
 
-  return AuxiliaryClusteringData(key_columns, period_duration, last_period_duration, n_periods)
+  return AuxiliaryClusteringData(
+    key_columns,
+    period_duration,
+    last_period_duration,
+    n_periods,
+  )
 end
 
 """
@@ -409,7 +418,11 @@ function find_representative_periods(
   # Check that the number of RPs makes sense. The first check can be done immediately,
   # The second check is done after we compute the auxiliary data
   if n_rp < 1
-    throw(ArgumentError("The number of representative periods is $n_rp but has to be at least 1."))
+    throw(
+      ArgumentError(
+        "The number of representative periods is $n_rp but has to be at least 1.",
+      ),
+    )
   end
 
   # Find auxiliary data and pre-compute additional constants that are used multiple times alter

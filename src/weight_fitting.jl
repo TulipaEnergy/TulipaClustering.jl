@@ -220,7 +220,8 @@ function fit_rep_period_weights!(
     else
       x = Vector(weight_matrix[period, 1:n_rp])
     end
-    x = projected_subgradient_descent!(x; subgradient, projection, tol = tol * 0.01, args...)
+    x =
+      projected_subgradient_descent!(x; subgradient, projection, tol = tol * 0.01, args...)
     x[x .< tol] .= 0.0  # replace insignificant small values with zeros
     if weight_type == :convex || weight_type == :conical_bounded
       # Because some values might have been removed, convexity can be lost.

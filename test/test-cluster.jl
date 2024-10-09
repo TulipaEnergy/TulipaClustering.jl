@@ -67,7 +67,8 @@ end
 @testset "Data valudation" begin
   @testset "Make sure that when the columns are right validation works and the key columns are found" begin
     @test begin
-      df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :a .=> "a", :value => 1:3])
+      df =
+        DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :a .=> "a", :value => 1:3])
       keys = TulipaClustering.validate_df_and_find_key_columns(df)
 
       keys == [:timestep, :a]
