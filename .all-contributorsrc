@@ -1,5 +1,24 @@
 {
-  "projectName": "TulipaClustering",
+  "projectName": "TulipaClustering.jl",
   "projectOwner": "TulipaEnergy",
-  "files": ["README.md", "docs/src/index.md"]
+  "files": [
+    "README.md",
+    "docs/src/index.md"
+  ],
+  "commitType": "docs",
+  "commitConvention": "angular",
+  "contributorsPerLine": 7,
+  "contributors": [
+    {
+      "login": "greg-neustroev",
+      "name": "Greg Neustroev",
+      "avatar_url": "https://avatars.githubusercontent.com/u/32451432?v=4",
+      "profile": "https://github.com/greg-neustroev",
+      "contributions": [
+        "code",
+        "doc",
+        "maintenance"
+      ]
+    }
+  ]
 }
