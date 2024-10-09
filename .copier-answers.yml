@@ -1,12 +1,13 @@
 # Changes here will be overwritten by Copier
 AnswerStrategy: recommended
-AuthorEmail: G.Neustroev@tudelft.nl
-AuthorName: Greg Neustroev
-Indentation: 2
-JuliaMinVersion: '1.6'
+Authors: Greg Neustroev <G.Neustroev@tudelft.nl> and contributors
+CodeOfConductContact: G.Neustroev@tudelft.nl
+JuliaIndentation: 2
+JuliaMinVersion: 1.10.5
 License: Apache-2.0
+LicenseCopyrightHolders: Greg Neustroev
 PackageName: TulipaClustering
 PackageOwner: TulipaEnergy
 PackageUUID: 314fac8b-c762-4aa3-9d12-851379729163
-_commit: v0.7.0
+_commit: v0.12.0
 _src_path: https://github.com/JuliaBesties/BestieTemplate.jl
