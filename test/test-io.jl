@@ -21,8 +21,11 @@
     TulipaClustering.write_clustering_result_to_tables(connection, clustering_data)
 
     tables = DBInterface.execute(connection, "SHOW TABLES") |> DataFrame |> df -> df.name
-    @test sort(tables) ==
-          Union{Missing, String}["profiles_rep_periods", "rep_periods_data", "rep_periods_mapping"]
+    @test sort(tables) == Union{Missing, String}[
+      "profiles_rep_periods",
+      "rep_periods_data",
+      "rep_periods_mapping",
+    ]
 
     @testset "rep_periods_data" begin
       rep_periods_data_df =
@@ -36,8 +39,10 @@
     end
 
     @testset "ClusteringResult constructor without auxiliary data" begin
-      clustering_result =
-        TulipaClustering.ClusteringResult(clustering_data.profiles, clustering_data.weight_matrix)
+      clustering_result = TulipaClustering.ClusteringResult(
+        clustering_data.profiles,
+        clustering_data.weight_matrix,
+      )
 
       @test clustering_result.profiles == clustering_data.profiles
       @test clustering_result.weight_matrix == clustering_data.weight_matrix

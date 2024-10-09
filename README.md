@@ -17,11 +17,9 @@
 
 If you use TulipaClustering.jl in your work, please cite using the reference given in [CITATION.cff](https://github.com/TulipaEnergy/TulipaClustering.jl/blob/main/CITATION.cff).
 
-
 ## Contributing
 
 If you want to make contributions of any kind, please first that a look into our [contributing guide directly on GitHub](docs/src/90-contributing.md) or the [contributing page on the website](https://TulipaEnergy.github.io/TulipaClustering.jl/dev/90-contributing/).
-
 
 ---
 
