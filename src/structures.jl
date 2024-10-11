@@ -7,14 +7,16 @@ mutable struct AuxiliaryClusteringData
   period_duration::Int
   last_period_duration::Int
   n_periods::Int
+  medoids::Union{Vector{Int}, Nothing}
 
   function AuxiliaryClusteringData(
     key_columns,
     period_duration,
     last_period_duration,
     n_periods,
+    medoids,
   )
-    return new(key_columns, period_duration, last_period_duration, n_periods)
+    return new(key_columns, period_duration, last_period_duration, n_periods, medoids)
   end
 end
 
