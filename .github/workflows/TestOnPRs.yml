@@ -20,10 +20,21 @@ jobs:
   test:
     uses: ./.github/workflows/ReusableTest.yml
     with:
-      os: ubuntu-latest
-      version: "1"
-      arch: x64
-      allow_failure: false
-      run_codecov: true
+      os: ${{ matrix.os }}
+      version: ${{ matrix.version }}
+      arch: ${{ matrix.arch }}
+      allow_failure: ${{ matrix.allow_failure }}
+      run_codecov: ${{ matrix.version == '1' && matrix.os == 'ubuntu-latest' }}
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - "lts"
+          - "1"
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+        allow_failure: [false]
