@@ -202,12 +202,14 @@ function find_auxiliary_data(clustering_data::AbstractDataFrame)
   period_duration = maximum(clustering_data.timestep)
   last_period_duration =
     maximum(clustering_data[clustering_data.period .== n_periods, :timestep])
+  medoids = nothing
 
   return AuxiliaryClusteringData(
     key_columns,
     period_duration,
     last_period_duration,
     n_periods,
+    medoids,
   )
 end
 
@@ -483,6 +485,7 @@ function find_representative_periods(
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, kmedoids_result.medoids]
     assignments = kmedoids_result.assignments
+    aux.medoids = kmedoids_result.medoids
   else
     throw(ArgumentError("Clustering method is not supported"))
   end
@@ -507,6 +510,9 @@ function find_representative_periods(
       rp = n_rp,
       key_columns = aux.key_columns,
     )
+    if method ≡ :k_medoids
+      append!(aux.medoids, n_complete_periods + 1)
+    end
   end
 
   return ClusteringResult(rp_df, weight_matrix, clustering_matrix, rp_matrix, aux)

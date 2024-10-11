@@ -64,7 +64,7 @@ end
   end
 end
 
-@testset "Data valudation" begin
+@testset "Data validation" begin
   @testset "Make sure that when the columns are right validation works and the key columns are found" begin
     @test begin
       df =
