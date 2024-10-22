@@ -383,6 +383,92 @@ function append_period_from_source_df_as_rp!(
 end
 
 """
+    greedy_convex_hull(matrix; n_points, distance, initial_indices, mean_vector)
+
+  Greedy method for finding `n_points` points in a hull of the dataset. The points
+  are added iteratively, at each step the point that is the furthest away from the
+  hull of the current set of points is found and added to the hull.
+
+  - `matrix`: the clustering matrix
+  - `n_points`: number of hull points to find
+  - `distance`: distance semimetric
+  - `initial_indices`: initial points which must be added to the hull, can be nothing
+  - `mean_vector`: when adding the first point (if `initial_indices` is not given),
+      it will be chosen as the point furthest away from the `mean_vector`; this can be
+      nothing, in which case the first step will add a point furtherst away from
+      the centroid (the mean) of the dataset
+"""
+function greedy_convex_hull(
+  matrix::AbstractMatrix{Float64};
+  n_points::Int,
+  distance::SemiMetric,
+  initial_indices::Union{Vector{Int}, Nothing} = nothing,
+  mean_vector::Union{Vector{Float64}, Nothing} = nothing,
+)
+  # First resolve the points that are already in the hull given via `initial_indices`
+  if initial_indices ≡ nothing
+    if mean_vector ≡ nothing
+      mean_vector = vec(mean(matrix; dims = 2))
+    end
+    distances_from_mean = [distance(mean_vector, matrix[:, j]) for j in axes(matrix, 2)]
+    initial_indices = [argmax(distances_from_mean)]
+  end
+
+  # If there are more initial points than `n_points`, return the first `n_points`
+  if length(initial_indices) ≥ n_points
+    return initial_indices[1:n_points]
+  end
+
+  # Start filling in the remaining points
+  hull_indices = initial_indices
+  distances_cache = Dict{Int, Float64}()  # store previously computed distances
+  starting_index = length(initial_indices) + 1
+
+  for _ in starting_index:n_points
+    # Find the point that is the furthest away from the current hull
+    max_distance = -Inf
+    furthest_vector_index = nothing
+    hull_matrix = matrix[:, hull_indices]
+    projection_matrix = pinv(hull_matrix)
+    for column_index in axes(matrix, 2)
+      if column_index ∈ hull_indices
+        continue
+      end
+      last_added_vector = matrix[:, last(hull_indices)]
+      target_vector = matrix[:, column_index]
+
+      # Check whether the distance was previosly computed
+      cached_distance = get(distances_cache, column_index, Inf)
+      if distance(target_vector, last_added_vector) ≥ cached_distance
+        d = cached_distance
+      else
+        subgradient = x -> hull_matrix' * (hull_matrix * x - target_vector)
+        x = projection_matrix * target_vector
+        x =
+          projected_subgradient_descent!(x; subgradient, projection = project_onto_simplex)
+        projected_target = hull_matrix * x
+        d = distance(projected_target, target_vector)
+        distances_cache[column_index] = d
+      end
+
+      if d > max_distance
+        max_distance = d
+        furthest_vector_index = column_index
+      end
+    end
+
+    # If no point is found for some reason, throw an error
+    if furthest_vector_index ≡ nothing
+      throw(ArgumentError("Point not found"))
+    end
+
+    # Add the found point to the hull
+    push!(hull_indices, furthest_vector_index)
+  end
+  return hull_indices
+end
+
+"""
   find_representative_periods(
     clustering_data;
     n_rp = 10,
@@ -486,6 +572,76 @@ function find_representative_periods(
     rp_matrix = clustering_matrix[:, kmedoids_result.medoids]
     assignments = kmedoids_result.assignments
     aux.medoids = kmedoids_result.medoids
+  elseif method ≡ :convex_hull
+    # Do the clustering
+    hull_indices = greedy_convex_hull(clustering_matrix; n_points = n_rp, distance)
+
+    # Reinterpret the results
+    rp_matrix = clustering_matrix[:, hull_indices]
+    assignments = [
+      argmin([
+        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+      ]) for p in 1:n_periods
+    ]
+    aux.medoids = hull_indices
+  elseif method ≡ :convex_hull_with_null
+    # Check if we can add null to the clustering matrix. The distance to null can
+    # be undefined, e.g., for the cosine distance.
+    is_distance_to_zero_undefined =
+      isnan(distance(zeros(size(clustering_matrix, 1), 1), clustering_matrix[:, 1]))
+
+    if is_distance_to_zero_undefined
+      throw(
+        DomainError(
+          "cannot add null to the clustering data because distance to it is undefined",
+        ),
+      )
+    end
+
+    # Add null to the clustering matrix
+    matrix = [zeros(size(clustering_matrix, 1), 1) clustering_matrix]
+
+    # Do the clustering
+    hull_indices =
+      greedy_convex_hull(matrix; n_points = n_rp + 1, distance, initial_indices = [1])
+    popfirst!(hull_indices)
+
+    # Reinterpret the results
+    rp_matrix = clustering_matrix[:, hull_indices]
+    assignments = [
+      argmin([
+        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+      ]) for p in 1:n_periods
+    ]
+    aux.medoids = hull_indices
+  elseif method ≡ :conical_hull
+    # Do a gnomonic projection (normalization) of the data
+    normal_vector = vec(mean(clustering_matrix; dims = 2))
+    normalize!(normal_vector)
+    projection_coefficients = [
+      1.0 / dot(normal_vector, clustering_matrix[:, j]) for j in axes(clustering_matrix, 2)
+    ]
+    projected_matrix = [
+      clustering_matrix[i, j] * projection_coefficients[j] for
+      i in axes(clustering_matrix, 1), j in axes(clustering_matrix, 2)
+    ]
+
+    # Do the clustering
+    hull_indices = greedy_convex_hull(
+      projected_matrix;
+      n_points = n_rp,
+      distance,
+      mean_vector = normal_vector,
+    )
+
+    # Reinterpret the results
+    rp_matrix = clustering_matrix[:, hull_indices]
+    assignments = [
+      argmin([
+        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+      ]) for p in 1:n_periods
+    ]
+    aux.medoids = hull_indices
   else
     throw(ArgumentError("Clustering method is not supported"))
   end
