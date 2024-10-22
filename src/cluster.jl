@@ -431,7 +431,7 @@ function greedy_convex_hull(
     hull_matrix = matrix[:, hull_indices]
     projection_matrix = pinv(hull_matrix)
     for column_index in axes(matrix, 2)
-      if column_index ∈ hull_indices
+      if column_index in hull_indices
         continue
       end
       last_added_vector = matrix[:, last(hull_indices)]
@@ -581,7 +581,7 @@ function find_representative_periods(
     assignments = [
       argmin([
         distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
-      ]) for p in 1:n_periods
+      ]) for p in 1:n_complete_periods
     ]
     aux.medoids = hull_indices
   elseif method ≡ :convex_hull_with_null
@@ -592,26 +592,29 @@ function find_representative_periods(
 
     if is_distance_to_zero_undefined
       throw(
-        DomainError(
+        ArgumentError(
           "cannot add null to the clustering data because distance to it is undefined",
         ),
       )
     end
 
     # Add null to the clustering matrix
-    matrix = [zeros(size(clustering_matrix, 1), 1) clustering_matrix]
+    matrix = [clustering_matrix zeros(size(clustering_matrix, 1), 1)]
 
     # Do the clustering
     hull_indices =
       greedy_convex_hull(matrix; n_points = n_rp + 1, distance, initial_indices = [1])
+
+    # Remove null from the beginning and shift all indices by one
     popfirst!(hull_indices)
+    hull_indices .-= 1
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
     assignments = [
       argmin([
         distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
-      ]) for p in 1:n_periods
+      ]) for p in 1:n_complete_periods
     ]
     aux.medoids = hull_indices
   elseif method ≡ :conical_hull
@@ -639,9 +642,8 @@ function find_representative_periods(
     assignments = [
       argmin([
         distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
-      ]) for p in 1:n_periods
+      ]) for p in 1:n_complete_periods
     ]
-    aux.medoids = hull_indices
   else
     throw(ArgumentError("Clustering method is not supported"))
   end

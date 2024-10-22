@@ -214,7 +214,6 @@ function fit_rep_period_weights!(
     # TODO: this can be parallelized; investigate
     target_vector = clustering_matrix[:, period]
     subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
-    x = Vector(weight_matrix[period, 1:n_rp])
     if weight_type == :conical_bounded
       x = vcat(Vector(weight_matrix[period, 1:(n_rp - 1)]), [0.0])
     else
