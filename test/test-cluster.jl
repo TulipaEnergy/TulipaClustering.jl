@@ -197,6 +197,22 @@ end
   end
 end
 
+@testset "Convex hull clustering" begin
+  @testset "Make sure that convex hull clustering finds the hull" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_result =
+        find_representative_periods(clustering_data, 2; method = :convex_hull)
+      clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
+    end
+  end
+end
+
 @testset "Bad clustering method" begin
   @testset "Make sure that clustering fails when incorrect method is given" begin
     @test_throws ArgumentError begin
@@ -208,6 +224,23 @@ end
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :bad_method, init = :kmcen)
+    end
+  end
+
+  @testset "Make sure that clustering fails with cosine distance" begin
+    @test_throws ArgumentError begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull_with_null,
+        distance = CosineDist(),
+      )
     end
   end
 end
@@ -223,5 +256,29 @@ end
     @test_throws ArgumentError find_representative_periods(clustering_data, 0)
     @test_throws ArgumentError find_representative_periods(clustering_data, -1)
     @test_throws ArgumentError find_representative_periods(clustering_data, 3)
+  end
+end
+
+@testset "Greedy convex hull" begin
+  @testset "Test the case where points cannot be found" begin
+    @test_throws ArgumentError TulipaClustering.greedy_convex_hull(
+      [1.0 0.0; 0.0 1.0];
+      n_points = 10,
+      distance = Euclidean(),
+      initial_indices = [1, 2],
+      mean_vector = nothing,
+    )
+  end
+
+  @testset "Test the case when there are more initial indices than points" begin
+    @test size(
+      TulipaClustering.greedy_convex_hull(
+        [1.0 0.0; 0.0 1.0];
+        n_points = 1,
+        distance = Euclidean(),
+        initial_indices = [1, 2],
+        mean_vector = nothing,
+      ),
+    ) == (1,)
   end
 end

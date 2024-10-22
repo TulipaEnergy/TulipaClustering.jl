@@ -88,9 +88,8 @@ end
         clustering_data,
         10;
         drop_incomplete_last_period = false,
-        method = :k_means,
+        method = :convex_hull,
         distance = SqEuclidean(),
-        init = :kmcen,
       )
       TulipaClustering.fit_rep_period_weights!(
         clustering_result;
@@ -110,16 +109,17 @@ end
         clustering_data,
         10;
         drop_incomplete_last_period = false,
-        method = :k_means,
+        method = :convex_hull_with_null,
         distance = SqEuclidean(),
-        init = :kmcen,
       )
       TulipaClustering.fit_rep_period_weights!(
         clustering_result;
         weight_type = :conical_bounded,
         niters = 5,
+        show_progress = true,
       )
-      all(sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2) .≤ 1.0)
+      total_weights = sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2)
+      all((total_weights .< 1.0) .|| (total_weights .≈ 1.0))
     end
 
     @test begin
@@ -137,9 +137,9 @@ end
         clustering_result;
         weight_type = :conical_bounded,
         niters = 5,
-        show_progress = true,
       )
-      all(sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2) .≤ 1.0)
+      total_weights = sum(clustering_result.weight_matrix[1:(end - 1), :]; dims = 2)
+      all((total_weights .< 1.0) .|| (total_weights .≈ 1.0))
     end
   end
 
@@ -151,8 +151,8 @@ end
         clustering_data,
         10;
         drop_incomplete_last_period = false,
-        method = :k_means,
-        distance = SqEuclidean(),
+        method = :conical_hull,
+        distance = CosineDist(),
         init = :kmcen,
       )
       TulipaClustering.fit_rep_period_weights!(

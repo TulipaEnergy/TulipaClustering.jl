@@ -6,8 +6,10 @@ using Clustering
 using DataFrames
 using Distances
 using DuckDB
+using LinearAlgebra
 using ProgressBars
 using SparseArrays
+using Statistics
 
 include("structures.jl")
 include("io.jl")
