@@ -88,7 +88,7 @@ end
         clustering_data,
         10;
         drop_incomplete_last_period = false,
-        method = :k_means,
+        method = :convex_hull,
         distance = SqEuclidean(),
         init = :kmcen,
       )
@@ -110,7 +110,7 @@ end
         clustering_data,
         10;
         drop_incomplete_last_period = false,
-        method = :k_means,
+        method = :convex_hull_with_null,
         distance = SqEuclidean(),
         init = :kmcen,
       )
@@ -151,7 +151,7 @@ end
         clustering_data,
         10;
         drop_incomplete_last_period = false,
-        method = :k_means,
+        method = :conical_hull,
         distance = SqEuclidean(),
         init = :kmcen,
       )
