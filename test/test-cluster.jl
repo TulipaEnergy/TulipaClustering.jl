@@ -213,6 +213,21 @@ end
   end
 end
 
+@testset "Convex hull with null clustering" begin
+  @testset "Make sure that the furthest point from 0 is found as first representative" begin
+    @test begin
+      clustering_data = DataFrame(; period = [1, 2], value = [1.0, 0.5], timestep = [1, 1])
+      clustering_result = find_representative_periods(
+        clustering_data,
+        1;
+        distance = SqEuclidean(),
+        method = :convex_hull_with_null,
+      )
+      clustering_result.profiles[!, :value] == [1.0]
+    end
+  end
+end
+
 @testset "Bad clustering method" begin
   @testset "Make sure that clustering fails when incorrect method is given" begin
     @test_throws ArgumentError begin

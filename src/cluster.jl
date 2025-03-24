@@ -599,7 +599,7 @@ function find_representative_periods(
     end
 
     # Add null to the clustering matrix
-    matrix = [clustering_matrix zeros(size(clustering_matrix, 1), 1)]
+    matrix = [zeros(size(clustering_matrix, 1), 1) clustering_matrix]
 
     # Do the clustering
     hull_indices =
