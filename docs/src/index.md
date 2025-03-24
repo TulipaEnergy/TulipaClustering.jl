@@ -5,9 +5,9 @@ DocTestSetup = quote
 end
 ```
 
-# TulipaClustering
+# Welcome
 
-Documentation for [TulipaClustering](https://github.com/TulipaEnergy/TulipaClustering.jl).
+Documentation for [TulipaClustering.jl](https://github.com/TulipaEnergy/TulipaClustering.jl).
 
 ## Contributors
 

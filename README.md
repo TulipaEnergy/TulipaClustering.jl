@@ -17,6 +17,16 @@
 
 If you use TulipaClustering.jl in your work, please cite using the reference given in [CITATION.cff](https://github.com/TulipaEnergy/TulipaClustering.jl/blob/main/CITATION.cff).
 
+## Installation
+
+```julia-pkg
+pkg> add TulipaClustering
+```
+
+## Bug reports and discussions
+
+If you think you have found a bug, feel free to open an [issue](https://github.com/TulipaEnergy/TulipaClustering.jl/issues). If you have a general question or idea, start a discussion on the main repo [here](https://github.com/TulipaEnergy/TulipaEnergyModel.jl/discussions).
+
 ## Contributing
 
 If you want to make contributions of any kind, please first that a look into our [contributing guide directly on GitHub](docs/src/90-contributing.md) or the [contributing page on the website](https://TulipaEnergy.github.io/TulipaClustering.jl/dev/90-contributing/).
