@@ -575,7 +575,10 @@ function find_representative_periods(
   end
 
   # 4. Do the clustering, now that the data is transformed into a matrix
-  if method ≡ :k_means
+  if n_rp == 0
+    rp_matrix = nothing
+    assignments = Int[]
+  elseif method ≡ :k_means
     # Do the clustering
     kmeans_result = kmeans(clustering_matrix, n_rp; distance, args...)
 
@@ -676,7 +679,11 @@ function find_representative_periods(
   # 5. Reinterpret the clustering results into a format we need
 
   # First, convert the matrix data back to dataframes using the previously saved key columns
-  rp_df = matrix_and_keys_to_df(rp_matrix, keys)
+  if isnothing(rp_matrix)
+    rp_df = DataFrame()
+  else
+    rp_df = matrix_and_keys_to_df(rp_matrix, keys)
+  end
 
   # In case of
   if !isempty(initial_representatives) && method ∈ [:k_means, :k_medoids]

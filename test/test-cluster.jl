@@ -578,4 +578,33 @@ end
       [1.0, 2.0, 3.0, 4.0]
     end
   end
+
+  @testset "Initial representatives already all representatives" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1], 4),
+        :timestep => repeat(1:2; inner = 2, outer = 1),
+        :technology => repeat(["Solar", "Nuclear"], 2),
+        :value => 1:4,
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        1;
+        method = :k_medoids,
+        initial_representatives = representatives,
+      )
+
+      println(clustering_result.profiles)
+      clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
+      [1.0, 2.0, 3.0, 4.0]
+    end
+  end
 end
