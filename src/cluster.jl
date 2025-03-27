@@ -477,6 +477,7 @@ end
     drop_incomplete_last_period = false,
     method = :k_means,
     distance = SqEuclidean(),
+    initial_representatives = DataFrame(),
     args...,
   )
 
@@ -494,6 +495,11 @@ Finds representative periods via data clustering.
     shorter representative period
   - `method`: clustering method to use, either `:k_means` and `:k_medoids`
   - `distance`: semimetric used to measure distance between data points.
+  - `initial_representatives` initial representatives that should be
+    included in the clustering. The period column in the initial representatives
+    should be 1-indexed and the key columns should be the same as in the clustering data.
+    For the hull methods it will be added before clustering, for :k_means and :k_medoids
+    it will be added after clustering.
   - other named arguments can be provided; they are passed to the clustering method.
 """
 function find_representative_periods(
@@ -505,7 +511,7 @@ function find_representative_periods(
   initial_representatives::AbstractDataFrame = DataFrame(),
   args...,
 )
-  # Check that the number of RPs makes sense. The first check can be done immediately,
+  # 1. Check that the number of RPs makes sense. The first check can be done immediately,
   # The second check is done after we compute the auxiliary data
   if n_rp < 1
     throw(
@@ -530,6 +536,7 @@ function find_representative_periods(
   is_last_period_excluded = has_incomplete_last_period && !drop_incomplete_last_period
   n_complete_periods = has_incomplete_last_period ? n_periods - 1 : n_periods
 
+  # Check that the initial representatives are compatible with the clustering data
   if !isempty(initial_representatives)
     validate_initial_representatives(
       initial_representatives,
@@ -538,7 +545,7 @@ function find_representative_periods(
       is_last_period_excluded,
       n_rp,
     )
-    i_rp = maximum(initial_representatives.period)
+    i_rp = maximum(initial_representatives.period) # number of provided representative periods
   else
     i_rp = 0
   end
@@ -562,20 +569,19 @@ function find_representative_periods(
     weight_matrix = spzeros(n_complete_periods, n_rp)
   end
 
-  # We need to remove initial representatives from n_rp in case of k_means and k_medoids
-
   # 3. Build the clustering matrix
 
-  # If clustering is k-means or k-medoids we remove amount of initial representatives from n_rp
   if method ∈ [:k_means, :k_medoids] && !isempty(initial_representatives)
+    # If clustering is k-means or k-medoids we remove amount of initial representatives from n_rp
     n_rp -= i_rp
     clustering_matrix, keys = df_to_matrix_and_keys(
       clustering_data[clustering_data.period .≤ n_complete_periods, :],
       aux.key_columns,
     )
-    # If clustering is other, we add initial representatives to the clustering matrix in front
+
   elseif method ∈ [:convex_hull, :convex_hull_with_null, :conical_hull] &&
          !isempty(initial_representatives)
+    # If clustering is one of the hull methods, we add initial representatives to the clustering matrix in front
     clustering_data.period = clustering_data.period .+ i_rp
     clustering_data = vcat(initial_representatives, clustering_data)
     clustering_matrix, keys = df_to_matrix_and_keys(
@@ -595,7 +601,7 @@ function find_representative_periods(
   end
 
   # 4. Do the clustering, now that the data is transformed into a matrix
-  if n_rp == 0
+  if n_rp == 0 # If due to the additional representatives we have no clustering, create an empty placeholder
     rp_matrix = nothing
     assignments = Int[]
   elseif method ≡ :k_means
@@ -731,7 +737,7 @@ function find_representative_periods(
     rp_df = matrix_and_keys_to_df(rp_matrix, keys)
   end
 
-  # In case of
+  # In case of initial representatives and a non hull method, we add them now
   if !isempty(initial_representatives) && method ∈ [:k_means, :k_medoids]
     for p in 1:i_rp
       n_rp += 1
