@@ -602,9 +602,200 @@ end
         initial_representatives = representatives,
       )
 
-      println(clustering_result.profiles)
       clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
       [1.0, 2.0, 3.0, 4.0]
+    end
+  end
+end
+
+@testset "Hulls with initial representatives" begin
+  @testset "Initial representatives already all representatives convex hull" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Nuclear", "Solar"], 4),
+        :value => [2, 1, 4, 3, 14, 13, 16, 15],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull,
+        initial_representatives = representatives,
+      )
+
+      (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
+        [2.0, 1.0, 4.0, 3.0]
+      ) && (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+        [14.0, 13.0, 16.0, 15.0]
+      )
+    end
+  end
+
+  @testset "Initial representatives already all representatives convex hull with null" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Nuclear", "Solar"], 4),
+        :value => [2, 1, 4, 3, 14, 13, 16, 15],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull_with_null,
+        initial_representatives = representatives,
+      )
+
+      (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
+        [2.0, 1.0, 4.0, 3.0]
+      ) && (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+        [14.0, 13.0, 16.0, 15.0]
+      )
+    end
+  end
+
+  @testset "Initial representatives already all representatives conical hull" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Nuclear", "Solar"], 4),
+        :value => [2, 1, 4, 3, 14, 13, 16, 15],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :conical_hull,
+        initial_representatives = representatives,
+      )
+
+      (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
+        [2.0, 1.0, 4.0, 3.0]
+      ) && (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+        [14.0, 13.0, 16.0, 15.0]
+      )
+    end
+  end
+
+  @testset "Convex hull with one initial representative" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:3; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 3),
+        :technology => repeat(["Solar", "Nuclear"], 6),
+        :value => repeat(1:2:12; inner = 2),
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1]; inner = 4),
+        :timestep => repeat(1:2; inner = 2),
+        :technology => repeat(["Nuclear", "Solar"], 2),
+        :value => [11, 11, 13, 13],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull,
+        initial_representatives = representatives,
+      )
+
+      (
+          clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
+          [11.0, 11.0, 13.0, 13.0]
+        ) &&
+        (
+          clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+          [1.0, 1.0, 3.0, 3.0]
+        ) &&
+        (clustering_result.weight_matrix == [0.0 1.0; 0.0 1.0; 1.0 0.0])
+    end
+  end
+
+  @testset "Convex hull with null with one initial representative" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:3; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 3),
+        :technology => repeat(["Solar", "Nuclear"], 6),
+        :value => repeat(1:2:12; inner = 2),
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1]; inner = 4),
+        :timestep => repeat(1:2; inner = 2),
+        :technology => repeat(["Nuclear", "Solar"], 2),
+        :value => [11, 11, 13, 13],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull_with_null,
+        initial_representatives = representatives,
+      )
+
+      clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
+      [11.0, 11.0, 13.0, 13.0]
+    end
+  end
+
+  @testset "Conical hull with one initial representative" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:3; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 3),
+        :technology => repeat(["Solar", "Nuclear"], 6),
+        :value => repeat(1:2:12; inner = 2),
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1]; inner = 4),
+        :timestep => repeat(1:2; inner = 2),
+        :technology => repeat(["Nuclear", "Solar"], 2),
+        :value => [11, 11, 13, 13],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull_with_null,
+        initial_representatives = representatives,
+      )
+
+      clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
+      [11.0, 11.0, 13.0, 13.0]
     end
   end
 end
