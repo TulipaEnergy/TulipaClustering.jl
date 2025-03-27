@@ -501,6 +501,7 @@ function find_representative_periods(
   drop_incomplete_last_period::Bool = false,
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
+  initial_representatives::AbstractDataFrame,
   args...,
 )
   # Check that the number of RPs makes sense. The first check can be done immediately,
@@ -523,6 +524,7 @@ function find_representative_periods(
       ),
     )
   end
+
   has_incomplete_last_period = aux.last_period_duration ≠ aux.period_duration
   is_last_period_excluded = has_incomplete_last_period && !drop_incomplete_last_period
   n_complete_periods = has_incomplete_last_period ? n_periods - 1 : n_periods
@@ -674,4 +676,61 @@ function find_representative_periods(
   end
 
   return ClusteringResult(rp_df, weight_matrix, clustering_matrix, rp_matrix, aux)
+end
+
+function validate_initial_representatives(
+  initial_representatives::AbstractDataFrame,
+  clustering_data::AbstractDataFrame,
+  aux_clustering::AuxiliaryClusteringData,
+  last_period_excluded::Bool,
+  n_rp::Int,
+)
+
+  # Calling find_auxiliary_data on the initial representatives already checks whether the dataframes satisfies some of the base requirements (:period, :value, :timestep)
+  aux_initial = find_auxiliary_data(initial_representatives)
+
+  # Multiple checks to ensure that the initial representatives are compatible with the clustering data
+  if aux_clustering.key_columns ≠ aux_initial.key_columns
+    throw(
+      ArgumentError(
+        "Initial representatives have different key columns than the clustering data",
+      ),
+    )
+  end
+
+  if aux_initial.last_period_duration ≠ aux_initial.period_duration
+    throw(
+      ArgumentError(
+        "Initial representatives have an incomplete last period, which is not allowed",
+      ),
+    )
+  end
+
+  #TODO: see if this is the most efficient approach
+  key_columns_initial = select(initial_representatives, aux_clustering.key_columns)
+  key_columns_clustering = select(clustering_data, aux_clustering.key_columns)
+  set_initial = Set(collect(eachrow(key_columns_initial)))
+  set_clustering = Set(collect(eachrow(key_columns_clustering)))
+
+  if set_initial ≠ set_clustering
+    throw(
+      ArgumentError("Initial representatives have different keys than the clustering data"),
+    )
+  end
+
+  if !last_period_excluded && n_rp < aux_initial.n_periods
+    throw(
+      ArgumentError(
+        "The number of representative periods is $n_rp but has to be at least $(aux_initial.n_periods).",
+      ),
+    )
+  end
+
+  if last_period_excluded && n_rp < aux_initial.n_periods + 1
+    throw(
+      ArgumentError(
+        "The number of representative periods is $n_rp but has to be at least $(aux_initial.n_periods + 1).",
+      ),
+    )
+  end
 end
