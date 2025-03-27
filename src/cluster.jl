@@ -530,6 +530,16 @@ function find_representative_periods(
   is_last_period_excluded = has_incomplete_last_period && !drop_incomplete_last_period
   n_complete_periods = has_incomplete_last_period ? n_periods - 1 : n_periods
 
+  if !isempty(initial_representatives)
+    validate_initial_representatives(
+      initial_representatives,
+      clustering_data,
+      aux,
+      is_last_period_excluded,
+      n_rp,
+    )
+  end
+
   # 2. Find the weights of the two types of periods and pre-build the weight matrix.
   # We assume that the only period that can be incomplete (i.e., has a duration
   # that is less than aux.period_duration) is the very last one. All other periods
@@ -549,6 +559,8 @@ function find_representative_periods(
     weight_matrix = spzeros(n_complete_periods, n_rp)
   end
 
+  # We need to remove initial representatives from n_rp in case of k_means and k_medoids
+
   # 3. Build the clustering matrix
 
   # First, find the demand matrix and rescale it if needed
@@ -556,6 +568,11 @@ function find_representative_periods(
     clustering_data[clustering_data.period .≤ n_complete_periods, :],
     aux.key_columns,
   )
+
+  # If clustering is k-means or k-medoids we remove amount of initial representatives from n_rp
+  if method ∈ [:k_means, :k_medoids] && !isempty(initial_representatives)
+    n_rp -= maximum(initial_representatives.period)
+  end
 
   # 4. Do the clustering, now that the data is transformed into a matrix
   if method ≡ :k_means
@@ -660,6 +677,20 @@ function find_representative_periods(
 
   # First, convert the matrix data back to dataframes using the previously saved key columns
   rp_df = matrix_and_keys_to_df(rp_matrix, keys)
+
+  # In case of
+  if !isempty(initial_representatives) && method ∈ [:k_means, :k_medoids]
+    for p in 1:maximum(initial_representatives.period)
+      n_rp += 1
+      append_period_from_source_df_as_rp!(
+        rp_df;
+        source_df = initial_representatives,
+        period = p,
+        rp = n_rp,
+        key_columns = aux.key_columns,
+      )
+    end
+  end
 
   # Next, re-append the last period if it was excluded from clustering
   if is_last_period_excluded
