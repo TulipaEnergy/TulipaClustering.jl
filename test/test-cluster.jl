@@ -314,3 +314,138 @@ end
     ) == (1,)
   end
 end
+
+@testset "Validating initial representatives" begin
+  @testset "DataFrame without periods passed for initial representatives" begin
+    initial_representatives = DataFrame([:timestep => 1:2, :value => 1:2])
+    @test_throws DomainError(
+      initial_representatives,
+      "DataFrame must contain column `period`; call split_into_periods! to split it into periods.",
+    ) begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      aux_clustering = find_auxiliary_data(clustering_data)
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        false,
+        1,
+      )
+    end
+  end
+
+  @testset "Dataframe with different key columns passed for initial representatives" begin
+    @test_throws ArgumentError(
+      "Initial representatives have different key columns than the clustering data",
+    ) begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      aux_clustering = find_auxiliary_data(clustering_data)
+      initial_representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :demand => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        false,
+        1,
+      )
+    end
+  end
+
+  @testset "Dataframe with different keys passed for initial representatives" begin
+    @test_throws ArgumentError(
+      "Initial representatives have different keys than the clustering data",
+    ) begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 6),
+        :timestep => repeat(1:3; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 6),
+        :value => 5:16,
+      ])
+      aux_clustering = find_auxiliary_data(clustering_data)
+      initial_representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        false,
+        1,
+      )
+    end
+  end
+
+  @testset "Initial representatives more than n_rp" begin
+    @test_throws ArgumentError(
+      "The number of representative periods is 1 but has to be at least 2.",
+    ) begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      aux_clustering = find_auxiliary_data(clustering_data)
+      initial_representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        false,
+        1,
+      )
+    end
+  end
+
+  @testset "Initial representatives more than n_rp" begin
+    @test_throws ArgumentError(
+      "The number of representative periods is 2 but has to be at least 3.",
+    ) begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      push!(clustering_data, [3, 1, "Solar", 6])
+      push!(clustering_data, [3, 1, "Nuclear", 6])
+      aux_clustering = find_auxiliary_data(clustering_data)
+      initial_representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        true,
+        2,
+      )
+    end
+  end
+end
