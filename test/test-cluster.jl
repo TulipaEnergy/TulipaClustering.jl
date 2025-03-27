@@ -449,3 +449,133 @@ end
     end
   end
 end
+
+@testset "K-means and k-medoids with initial representatives" begin
+  @testset "K-means and complete periods" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1], 4),
+        :timestep => repeat(1:2; inner = 2, outer = 1),
+        :technology => repeat(["Solar", "Nuclear"], 2),
+        :value => 1:4,
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :k_means,
+        initial_representatives = representatives,
+      )
+
+      clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+      [1.0, 2.0, 3.0, 4.0]
+    end
+  end
+
+  @testset "K-medoids and incomplete periods" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1], 4),
+        :timestep => repeat(1:2; inner = 2, outer = 1),
+        :technology => repeat(["Solar", "Nuclear"], 2),
+        :value => 1:4,
+      ])
+
+      push!(clustering_data, [3, 1, "Solar", 6])
+      push!(clustering_data, [3, 1, "Nuclear", 6])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        3;
+        method = :k_medoids,
+        initial_representatives = representatives,
+      )
+
+      (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+        [1.0, 2.0, 3.0, 4.0]
+      ) && (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 3, :value] ==
+        [6.0, 6.0]
+      )
+    end
+  end
+
+  @testset "K-means and incomplete period" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1], 4),
+        :timestep => repeat(1:2; inner = 2, outer = 1),
+        :technology => repeat(["Solar", "Nuclear"], 2),
+        :value => 1:4,
+      ])
+
+      push!(clustering_data, [3, 1, "Solar", 6])
+      push!(clustering_data, [3, 1, "Nuclear", 6])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        3;
+        method = :k_means,
+        initial_representatives = representatives,
+      )
+
+      (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+        [1.0, 2.0, 3.0, 4.0]
+      ) && (
+        clustering_result.profiles[clustering_result.profiles.rep_period .== 3, :value] ==
+        [6.0, 6.0]
+      )
+    end
+  end
+
+  @testset "K-medoids and complete period" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1], 4),
+        :timestep => repeat(1:2; inner = 2, outer = 1),
+        :technology => repeat(["Solar", "Nuclear"], 2),
+        :value => 1:4,
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :k_medoids,
+        initial_representatives = representatives,
+      )
+
+      clustering_result.profiles[clustering_result.profiles.rep_period .== 2, :value] ==
+      [1.0, 2.0, 3.0, 4.0]
+    end
+  end
+end
