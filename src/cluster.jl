@@ -1,4 +1,5 @@
-export find_representative_periods, split_into_periods!
+export find_representative_periods,
+  split_into_periods!, find_auxiliary_data, validate_initial_representatives
 
 """
     combine_periods!(df)
@@ -501,7 +502,7 @@ function find_representative_periods(
   drop_incomplete_last_period::Bool = false,
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
-  initial_representatives::AbstractDataFrame,
+  initial_representatives::AbstractDataFrame = DataFrame(),
   args...,
 )
   # Check that the number of RPs makes sense. The first check can be done immediately,
