@@ -538,6 +538,9 @@ function find_representative_periods(
       is_last_period_excluded,
       n_rp,
     )
+    i_rp = maximum(initial_representatives.period)
+  else
+    i_rp = 0
   end
 
   # 2. Find the weights of the two types of periods and pre-build the weight matrix.
@@ -563,15 +566,32 @@ function find_representative_periods(
 
   # 3. Build the clustering matrix
 
-  # First, find the demand matrix and rescale it if needed
-  clustering_matrix, keys = df_to_matrix_and_keys(
-    clustering_data[clustering_data.period .≤ n_complete_periods, :],
-    aux.key_columns,
-  )
-
   # If clustering is k-means or k-medoids we remove amount of initial representatives from n_rp
   if method ∈ [:k_means, :k_medoids] && !isempty(initial_representatives)
-    n_rp -= maximum(initial_representatives.period)
+    n_rp -= i_rp
+    clustering_matrix, keys = df_to_matrix_and_keys(
+      clustering_data[clustering_data.period .≤ n_complete_periods, :],
+      aux.key_columns,
+    )
+    # If clustering is other, we add initial representatives to the clustering matrix in front
+  elseif method ∈ [:convex_hull, :convex_hull_with_null, :conical_hull] &&
+         !isempty(initial_representatives)
+    clustering_data.period = clustering_data.period .+ i_rp
+    clustering_data = vcat(initial_representatives, clustering_data)
+    clustering_matrix, keys = df_to_matrix_and_keys(
+      clustering_data[
+        clustering_data.period .≤ (n_complete_periods + maximum(
+          initial_representatives.period,
+        )),
+        :,
+      ],
+      aux.key_columns,
+    )
+  else
+    clustering_matrix, keys = df_to_matrix_and_keys(
+      clustering_data[clustering_data.period .≤ n_complete_periods, :],
+      aux.key_columns,
+    )
   end
 
   # 4. Do the clustering, now that the data is transformed into a matrix
@@ -596,14 +616,24 @@ function find_representative_periods(
     assignments = kmedoids_result.assignments
     aux.medoids = kmedoids_result.medoids
   elseif method ≡ :convex_hull
-    # Do the clustering
-    hull_indices = greedy_convex_hull(clustering_matrix; n_points = n_rp, distance)
+    # Do the clustering, with initial indices if provided
+    if !isempty(initial_representatives)
+      hull_indices = greedy_convex_hull(
+        clustering_matrix;
+        n_points = n_rp,
+        distance,
+        initial_indices = collect(1:i_rp),
+      )
+    else
+      hull_indices = greedy_convex_hull(clustering_matrix; n_points = n_rp, distance)
+    end
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
     assignments = [
       argmin([
-        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+        distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
+        h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
     aux.medoids = hull_indices
@@ -625,8 +655,12 @@ function find_representative_periods(
     matrix = [zeros(size(clustering_matrix, 1), 1) clustering_matrix]
 
     # Do the clustering
-    hull_indices =
-      greedy_convex_hull(matrix; n_points = n_rp + 1, distance, initial_indices = [1])
+    hull_indices = greedy_convex_hull(
+      matrix;
+      n_points = n_rp + 1,
+      distance,
+      initial_indices = collect(1:(i_rp + 1)),
+    )
 
     # Remove null from the beginning and shift all indices by one
     popfirst!(hull_indices)
@@ -636,9 +670,11 @@ function find_representative_periods(
     rp_matrix = clustering_matrix[:, hull_indices]
     assignments = [
       argmin([
-        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+        distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
+        h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
+
     aux.medoids = hull_indices
   elseif method ≡ :conical_hull
     # Do a gnomonic projection (normalization) of the data
@@ -652,19 +688,29 @@ function find_representative_periods(
       i in axes(clustering_matrix, 1), j in axes(clustering_matrix, 2)
     ]
 
-    # Do the clustering
-    hull_indices = greedy_convex_hull(
-      projected_matrix;
-      n_points = n_rp,
-      distance,
-      mean_vector = normal_vector,
-    )
+    if !isempty(initial_representatives)
+      hull_indices = greedy_convex_hull(
+        projected_matrix;
+        n_points = n_rp,
+        distance,
+        mean_vector = normal_vector,
+        initial_indices = collect(1:i_rp),
+      )
+    else
+      hull_indices = greedy_convex_hull(
+        projected_matrix;
+        n_points = n_rp,
+        distance,
+        mean_vector = normal_vector,
+      )
+    end
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
     assignments = [
       argmin([
-        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+        distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
+        h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
   else
@@ -687,7 +733,7 @@ function find_representative_periods(
 
   # In case of
   if !isempty(initial_representatives) && method ∈ [:k_means, :k_medoids]
-    for p in 1:maximum(initial_representatives.period)
+    for p in 1:i_rp
       n_rp += 1
       append_period_from_source_df_as_rp!(
         rp_df;
