@@ -579,6 +579,33 @@ end
     end
   end
 
+  @testset "rp_matrix also contains initial representatives and at the right place in the right order" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1], 4),
+        :timestep => repeat(1:2; inner = 2, outer = 1),
+        :technology => repeat(["Nuclear", "Solar"], 2),
+        :value => [2, 1, 4, 3],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :k_medoids,
+        initial_representatives = representatives,
+      )
+
+      clustering_result.rp_matrix[:, 2] == [1, 2, 3, 4]
+    end
+  end
+
   @testset "Initial representatives already all representatives" begin
     @test begin
       clustering_data = DataFrame([
@@ -708,7 +735,7 @@ end
     end
   end
 
-  @testset "Convex hull with one initial representative" begin
+  @testset "Convex hull with one initial representative picks correct initial and second representative" begin
     @test begin
       clustering_data = DataFrame([
         :period => repeat(1:3; inner = 4),
@@ -743,7 +770,7 @@ end
     end
   end
 
-  @testset "Convex hull with null with one initial representative" begin
+  @testset "Convex hull with null with one initial representative picks correct initial and second representative" begin
     @test begin
       clustering_data = DataFrame([
         :period => repeat(1:3; inner = 4),
@@ -771,7 +798,7 @@ end
     end
   end
 
-  @testset "Conical hull with one initial representative" begin
+  @testset "Conical hull with one initial representative picks correct initial and second representative" begin
     @test begin
       clustering_data = DataFrame([
         :period => repeat(1:3; inner = 4),
@@ -796,6 +823,33 @@ end
 
       clustering_result.profiles[clustering_result.profiles.rep_period .== 1, :value] ==
       [11.0, 11.0, 13.0, 13.0]
+    end
+  end
+
+  @testset "Convex hull does not contain intial representative in clustering matrix" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:3; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 3),
+        :technology => repeat(["Solar", "Nuclear"], 6),
+        :value => repeat(1:2:12; inner = 2),
+      ])
+
+      representatives = DataFrame([
+        :period => repeat([1]; inner = 4),
+        :timestep => repeat(1:2; inner = 2),
+        :technology => repeat(["Nuclear", "Solar"], 2),
+        :value => [11, 11, 13, 13],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull,
+        initial_representatives = representatives,
+      )
+
+      !any(==(13), clustering_result.clustering_matrix)
     end
   end
 end
