@@ -751,6 +751,20 @@ function find_representative_periods(
         rp = n_rp,
         key_columns = aux.key_columns,
       )
+
+      # Since there is a probability that intial_representatives is not sorted in same way as clustering_matrix, need to sort first based on keys
+      # TODO: see if this is the most efficient approach
+      values_dict = Dict(
+        row[aux.key_columns] => row[:value] for
+        row in eachrow(initial_representatives[initial_representatives.period .== p, :])
+      )
+      values = [values_dict[key] for key in eachrow(keys)]
+
+      if p == 1 && isnothing(rp_matrix)
+        rp_matrix = reshape(values, :, 1)
+      else
+        rp_matrix = hcat(rp_matrix, values)
+      end
     end
   end
 
