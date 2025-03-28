@@ -642,6 +642,7 @@ function find_representative_periods(
         h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
+    clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
     aux.medoids = hull_indices
   elseif method ≡ :convex_hull_with_null
     # Check if we can add null to the clustering matrix. The distance to null can
@@ -680,6 +681,7 @@ function find_representative_periods(
         h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
+    clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
 
     aux.medoids = hull_indices
   elseif method ≡ :conical_hull
@@ -719,6 +721,7 @@ function find_representative_periods(
         h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
+    clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
   else
     throw(ArgumentError("Clustering method is not supported"))
   end
