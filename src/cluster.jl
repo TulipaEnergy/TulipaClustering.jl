@@ -726,11 +726,6 @@ function find_representative_periods(
     throw(ArgumentError("Clustering method is not supported"))
   end
 
-  # Fill in the weight matrix using the assignments
-  for (p, rp) in enumerate(assignments)
-    weight_matrix[p, rp] = complete_period_weight
-  end
-
   # 5. Reinterpret the clustering results into a format we need
 
   # First, convert the matrix data back to dataframes using the previously saved key columns
@@ -766,6 +761,16 @@ function find_representative_periods(
         rp_matrix = hcat(rp_matrix, values)
       end
     end
+  end
+
+  assignments = [
+    argmin([
+      distance(clustering_matrix[:, p], rp_matrix[:, r]) for r in axes(rp_matrix, 2)
+    ]) for p in 1:n_complete_periods
+  ]
+
+  for (p, rp) in enumerate(assignments)
+    weight_matrix[p, rp] = complete_period_weight
   end
 
   # Next, re-append the last period if it was excluded from clustering
