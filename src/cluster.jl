@@ -524,6 +524,7 @@ function find_representative_periods(
   # Find auxiliary data and pre-compute additional constants that are used multiple times alter
   aux = find_auxiliary_data(clustering_data)
   n_periods = aux.n_periods
+
   if n_rp > n_periods
     throw(
       ArgumentError(
@@ -582,8 +583,12 @@ function find_representative_periods(
   elseif method ∈ [:convex_hull, :convex_hull_with_null, :conical_hull] &&
          !isempty(initial_representatives)
     # If clustering is one of the hull methods, we add initial representatives to the clustering matrix in front
-    clustering_data.period = clustering_data.period .+ i_rp
-    clustering_data = vcat(initial_representatives, clustering_data)
+
+    # TODO: This should be done without a copy, changed to make it not in place
+    updated_clustering_data = deepcopy(clustering_data)
+    updated_clustering_data.period = updated_clustering_data.period .+ i_rp
+    clustering_data = vcat(initial_representatives, updated_clustering_data)
+
     clustering_matrix, keys = df_to_matrix_and_keys(
       clustering_data[
         clustering_data.period .≤ (n_complete_periods + maximum(
@@ -715,6 +720,7 @@ function find_representative_periods(
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
+
     assignments = [
       argmin([
         distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for

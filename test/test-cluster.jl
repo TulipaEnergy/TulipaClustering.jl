@@ -853,3 +853,42 @@ end
     end
   end
 end
+@testset "Weights are correctly calculated with representatives" begin
+  @testset "Weights are equal for each method when representatives don't need to be found" begin
+    @test begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :value => 5:12,
+      ])
+
+      representatives = DataFrame([
+        :period => repeat(1:2; inner = 4),
+        :timestep => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Nuclear", "Solar"], 4),
+        :value => [2, 1, 4, 3, 14, 13, 16, 15],
+      ])
+
+      clustering_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull,
+        initial_representatives = representatives,
+        distance = CosineDist(),
+      )
+
+      clustering_result_2 = find_representative_periods(
+        clustering_data,
+        2;
+        method = :k_medoids,
+        initial_representatives = representatives,
+        distance = CosineDist(),
+      )
+
+      weight_matrix_1 = clustering_result.weight_matrix
+      weight_matrix_2 = clustering_result_2.weight_matrix
+      weight_matrix_1 == weight_matrix_2
+    end
+  end
+end
