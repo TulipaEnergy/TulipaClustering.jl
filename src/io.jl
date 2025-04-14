@@ -1,4 +1,4 @@
-export read_clustering_data_from_csv_folder, write_clustering_result_to_csv_folder
+export write_clustering_result_to_tables
 
 """
     weight_matrix_to_df(weights)
@@ -25,17 +25,31 @@ Writes a [`TulipaClustering.ClusteringResult`](@ref) to CSV files in the
 """
 function write_clustering_result_to_tables(
   connection,
-  clustering_result::TulipaClustering.ClusteringResult,
+  clustering_result::TulipaClustering.ClusteringResult;
+  database_schema = "cluster",
 )
   years = DataFrame(; :year => clustering_result.profiles.year |> unique)
-
-  DuckDB.register_data_frame(connection, clustering_result.profiles, "profiles_rep_periods")
   mapping_df = weight_matrix_to_df(clustering_result.weight_matrix)
+
+  # Below we register the dataframes as `t_<name>` in the general schema,
+  # because we can't create them directly into the correct schema.
+  # Then, we create tables in the correct schema copying these tables.
+  # Finally, we drop them.
+  prefix = ""
+  if database_schema != ""
+    DBInterface.execute(connection, "CREATE SCHEMA IF NOT EXISTS $database_schema")
+    prefix = "$database_schema."
+  end
 
   DuckDB.register_data_frame(
     connection,
+    clustering_result.profiles,
+    "t_profiles_rep_periods",
+  )
+  DuckDB.register_data_frame(
+    connection,
     crossjoin(years, mapping_df),
-    "rep_periods_mapping",
+    "t_rep_periods_mapping",
   )
 
   aux = clustering_result.auxiliary_data
@@ -47,12 +61,26 @@ function write_clustering_result_to_tables(
     num_timesteps = rep_period_duration,
     resolution = 1.0,
   )
-  DuckDB.register_data_frame(connection, crossjoin(years, rp_data_df), "rep_periods_data")
+  DuckDB.register_data_frame(connection, crossjoin(years, rp_data_df), "t_rep_periods_data")
 
   num_periods = size(clustering_result.weight_matrix, 1)
   period_duration = fill(aux.period_duration, num_periods)
   period_duration[end] = aux.last_period_duration
   period_data_df = DataFrame(; period = 1:num_periods, num_timesteps = period_duration)
-  DuckDB.register_data_frame(connection, crossjoin(years, period_data_df), "timeframe_data")
+  DuckDB.register_data_frame(
+    connection,
+    crossjoin(years, period_data_df),
+    "t_timeframe_data",
+  )
+
+  for table_name in
+      ("profiles_rep_periods", "rep_periods_data", "rep_periods_mapping", "timeframe_data")
+    DuckDB.query(
+      connection,
+      "CREATE OR REPLACE TABLE $(prefix)$table_name AS FROM t_$table_name",
+    )
+    DuckDB.query(connection, "DROP VIEW t_$table_name")
+  end
+
   return nothing
 end
