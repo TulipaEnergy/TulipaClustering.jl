@@ -29,8 +29,16 @@
     connection = DBInterface.connect(DuckDB.DB)
     TulipaClustering.write_clustering_result_to_tables(connection, clustering_data)
 
-    tables = DBInterface.execute(connection, "SHOW TABLES") |> DataFrame |> df -> df.name
-    @test sort(tables) == Union{Missing, String}[
+    tables = [
+      row.table_name for row in DBInterface.execute(
+        connection,
+        "SELECT table_name
+        FROM duckdb_tables()
+        WHERE schema_name = 'cluster'
+        ORDER BY table_name",
+      )
+    ]
+    @test tables == Union{Missing, String}[
       "profiles_rep_periods",
       "rep_periods_data",
       "rep_periods_mapping",
@@ -39,7 +47,8 @@
 
     @testset "rep_periods_data" begin
       rep_periods_data_df =
-        DBInterface.execute(connection, "SELECT * FROM rep_periods_data") |> DataFrame
+        DBInterface.execute(connection, "SELECT * FROM cluster.rep_periods_data") |>
+        DataFrame
       @test rep_periods_data_df.rep_period == 1:num_rep_periods
       @test rep_periods_data_df.num_timesteps == [
         fill(period_duration, num_rep_periods - 1)
