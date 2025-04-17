@@ -583,8 +583,6 @@ function find_representative_periods(
   elseif method ∈ [:convex_hull, :convex_hull_with_null, :conical_hull] &&
          !isempty(initial_representatives)
     # If clustering is one of the hull methods, we add initial representatives to the clustering matrix in front
-
-    # TODO: This should be done without a copy, changed to make it not in place
     updated_clustering_data = deepcopy(clustering_data)
     updated_clustering_data.period = updated_clustering_data.period .+ i_rp
     clustering_data = vcat(initial_representatives, updated_clustering_data)
@@ -741,30 +739,19 @@ function find_representative_periods(
 
   # In case of initial representatives and a non hull method, we add them now
   if !isempty(initial_representatives) && method ∈ [:k_means, :k_medoids]
-    for p in 1:i_rp
-      n_rp += 1
-      append_period_from_source_df_as_rp!(
-        rp_df;
-        source_df = initial_representatives,
-        period = p,
-        rp = n_rp,
-        key_columns = aux.key_columns,
-      )
-
-      # Since there is a probability that intial_representatives is not sorted in same way as clustering_matrix, need to sort first based on keys
-      # TODO: see if this is the most efficient approach
-      values_dict = Dict(
-        row[aux.key_columns] => row[:value] for
-        row in eachrow(initial_representatives[initial_representatives.period .== p, :])
-      )
-      values = [values_dict[key] for key in eachrow(keys)]
-
-      if p == 1 && isnothing(rp_matrix)
-        rp_matrix = reshape(values, :, 1)
-      else
-        rp_matrix = hcat(rp_matrix, values)
-      end
+    representatives_to_add =
+      select!(initial_representatives, :period => :rep_period, aux.key_columns..., :value)
+    representatives_to_add.rep_period .= representatives_to_add.rep_period .+ n_rp
+    rp_df = if rp_df === nothing
+      representatives_to_add
+    else
+      vcat(rp_df, representatives_to_add)
     end
+    rename!(rp_df, :rep_period => :period)
+    rp_matrix, keys = df_to_matrix_and_keys(rp_df, aux.key_columns)
+    rename!(rp_df, :period => :rep_period)
+    rp_matrix
+    n_rp += i_rp
   end
 
   assignments = [
