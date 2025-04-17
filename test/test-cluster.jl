@@ -370,7 +370,7 @@ end
     @test_throws ArgumentError(
       "Initial representatives and clustering data do not have the same keys\n" *
       "There are 0 extra keys in initial representatives\n" *
-      "and 2 extra keys in clustering data.",
+      "and 4 extra keys in clustering data.",
     ) begin
       clustering_data = DataFrame([
         :period => repeat(1:2; inner = 6),

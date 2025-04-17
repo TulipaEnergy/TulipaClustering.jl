@@ -827,15 +827,15 @@ function validate_initial_representatives(
   end
 
   # 3. Check that the initial representatives and clustering data have the same keys
-  #TODO: see if this is the most efficient approach
-  key_columns_initial = select(initial_representatives, aux_clustering.key_columns)
-  key_columns_clustering = select(clustering_data, aux_clustering.key_columns)
-  keys_initial = Set(collect(eachrow(key_columns_initial)))
-  keys_clustering = Set(collect(eachrow(key_columns_clustering)))
-
-  if keys_initial ≠ keys_clustering
-    more_keys_initial = length(setdiff(keys_initial, keys_clustering))
-    more_keys_clustering = length(setdiff(keys_clustering, keys_initial))
+  more_keys_initial = size(
+    antijoin(initial_representatives, clustering_data; on = aux_clustering.key_columns),
+    1,
+  )
+  more_keys_clustering = size(
+    antijoin(clustering_data, initial_representatives; on = aux_clustering.key_columns),
+    1,
+  )
+  if more_keys_initial > 0 || more_keys_clustering > 0
     throw(
       ArgumentError(
         "Initial representatives and clustering data do not have the same keys\n" *
