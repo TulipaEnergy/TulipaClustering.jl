@@ -341,7 +341,7 @@ end
 
   @testset "Dataframe with different key columns passed for initial representatives" begin
     @test_throws ArgumentError(
-      "Initial representatives have different key columns than the clustering data",
+      "Key columns of initial represenatives do not match clustering data\nExpected was: [:timestep, :technology] \nFound was: [:timestep, :demand]",
     ) begin
       clustering_data = DataFrame([
         :period => repeat(1:2; inner = 4),
@@ -368,7 +368,9 @@ end
 
   @testset "Dataframe with different keys passed for initial representatives" begin
     @test_throws ArgumentError(
-      "Initial representatives have different keys than the clustering data",
+      "Initial representatives and clustering data do not have the same keys\n" *
+      "There are 0 extra keys in initial representatives\n" *
+      "and 2 extra keys in clustering data.",
     ) begin
       clustering_data = DataFrame([
         :period => repeat(1:2; inner = 6),

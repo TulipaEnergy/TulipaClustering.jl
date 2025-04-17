@@ -812,7 +812,7 @@ function validate_initial_representatives(
   if aux_clustering.key_columns ≠ aux_initial.key_columns
     throw(
       ArgumentError(
-        "Initial representatives have different key columns than the clustering data",
+        "Key columns of initial represenatives do not match clustering data\nExpected was: $(aux_clustering.key_columns) \nFound was: $(aux_initial.key_columns)",
       ),
     )
   end
@@ -828,12 +828,18 @@ function validate_initial_representatives(
   #TODO: see if this is the most efficient approach
   key_columns_initial = select(initial_representatives, aux_clustering.key_columns)
   key_columns_clustering = select(clustering_data, aux_clustering.key_columns)
-  set_initial = Set(collect(eachrow(key_columns_initial)))
-  set_clustering = Set(collect(eachrow(key_columns_clustering)))
+  keys_initial = Set(collect(eachrow(key_columns_initial)))
+  keys_clustering = Set(collect(eachrow(key_columns_clustering)))
 
-  if set_initial ≠ set_clustering
+  if keys_initial ≠ keys_clustering
+    more_keys_initial = length(setdiff(keys_initial, keys_clustering))
+    more_keys_clustering = length(setdiff(keys_clustering, keys_initial))
     throw(
-      ArgumentError("Initial representatives have different keys than the clustering data"),
+      ArgumentError(
+        "Initial representatives and clustering data do not have the same keys\n" *
+        "There are $(more_keys_initial) extra keys in initial representatives\n" *
+        "and $(more_keys_clustering) extra keys in clustering data.",
+      ),
     )
   end
 
