@@ -628,16 +628,17 @@ function find_representative_periods(
     aux.medoids = kmedoids_result.medoids
   elseif method ≡ :convex_hull
     # Do the clustering, with initial indices if provided
-    if !isempty(initial_representatives)
-      hull_indices = greedy_convex_hull(
-        clustering_matrix;
-        n_points = n_rp,
-        distance,
-        initial_indices = collect(1:i_rp),
-      )
+    initial_indices = if !isempty(initial_representatives)
+      collect(1:i_rp)
     else
-      hull_indices = greedy_convex_hull(clustering_matrix; n_points = n_rp, distance)
+      nothing
     end
+    hull_indices = greedy_convex_hull(
+      clustering_matrix;
+      initial_indices = initial_indices,
+      n_points = n_rp,
+      distance,
+    )
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
@@ -701,22 +702,19 @@ function find_representative_periods(
       i in axes(clustering_matrix, 1), j in axes(clustering_matrix, 2)
     ]
 
-    if !isempty(initial_representatives)
-      hull_indices = greedy_convex_hull(
-        projected_matrix;
-        n_points = n_rp,
-        distance,
-        mean_vector = normal_vector,
-        initial_indices = collect(1:i_rp),
-      )
+    initial_indices = if !isempty(initial_representatives)
+      collect(1:i_rp)
     else
-      hull_indices = greedy_convex_hull(
-        projected_matrix;
-        n_points = n_rp,
-        distance,
-        mean_vector = normal_vector,
-      )
+      nothing
     end
+
+    hull_indices = greedy_convex_hull(
+      projected_matrix;
+      n_points = n_rp,
+      distance,
+      mean_vector = normal_vector,
+      initial_indices = initial_indices,
+    )
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
@@ -735,10 +733,10 @@ function find_representative_periods(
   # 5. Reinterpret the clustering results into a format we need
 
   # First, convert the matrix data back to dataframes using the previously saved key columns
-  if isnothing(rp_matrix)
-    rp_df = DataFrame()
+  rp_df = if rp_matrix ≡ nothing
+    nothing
   else
-    rp_df = matrix_and_keys_to_df(rp_matrix, keys)
+    matrix_and_keys_to_df(rp_matrix, keys)
   end
 
   # In case of initial representatives and a non hull method, we add them now
