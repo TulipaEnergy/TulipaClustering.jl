@@ -808,7 +808,7 @@ function validate_initial_representatives(
   # Calling find_auxiliary_data on the initial representatives already checks whether the dataframes satisfies some of the base requirements (:period, :value, :timestep)
   aux_initial = find_auxiliary_data(initial_representatives)
 
-  # Multiple checks to ensure that the initial representatives are compatible with the clustering data
+  # 1. Check that the column names for initial representatives are the same as for clustering data
   if aux_clustering.key_columns ≠ aux_initial.key_columns
     throw(
       ArgumentError(
@@ -817,6 +817,7 @@ function validate_initial_representatives(
     )
   end
 
+  # 2. Check that initial representatives do not contain a incomplete period
   if aux_initial.last_period_duration ≠ aux_initial.period_duration
     throw(
       ArgumentError(
@@ -825,6 +826,7 @@ function validate_initial_representatives(
     )
   end
 
+  # 3. Check that the initial representatives and clustering data have the same keys
   #TODO: see if this is the most efficient approach
   key_columns_initial = select(initial_representatives, aux_clustering.key_columns)
   key_columns_clustering = select(clustering_data, aux_clustering.key_columns)
@@ -843,6 +845,7 @@ function validate_initial_representatives(
     )
   end
 
+  # 4. Make sure that initial representatives does not contain more periods than asked
   if !last_period_excluded && n_rp < aux_initial.n_periods
     throw(
       ArgumentError(
