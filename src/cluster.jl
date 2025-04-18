@@ -803,7 +803,7 @@ function validate_initial_representatives(
   end
 
   # 2. Check that initial representatives do not contain a incomplete period
-  if aux_initial.last_period_duration ≠ aux_initial.period_duration
+  if aux_initial.last_period_duration ≠ aux_clustering.period_duration
     throw(
       ArgumentError(
         "Initial representatives have an incomplete last period, which is not allowed",

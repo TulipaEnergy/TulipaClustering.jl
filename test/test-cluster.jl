@@ -366,11 +366,9 @@ end
     end
   end
 
-  @testset "Dataframe with different keys passed for initial representatives" begin
+  @testset "Initial representatives with incomplete period" begin
     @test_throws ArgumentError(
-      "Initial representatives and clustering data do not have the same keys\n" *
-      "There are 0 extra keys in initial representatives\n" *
-      "and 4 extra keys in clustering data.",
+      "Initial representatives have an incomplete last period, which is not allowed",
     ) begin
       clustering_data = DataFrame([
         :period => repeat(1:2; inner = 6),
@@ -380,10 +378,39 @@ end
       ])
       aux_clustering = find_auxiliary_data(clustering_data)
       initial_representatives = DataFrame([
-        :period => repeat(1:2; inner = 4),
-        :timestep => repeat(1:2; inner = 2, outer = 2),
-        :technology => repeat(["Solar", "Nuclear"], 4),
-        :value => 5:12,
+        :period => [1, 1, 1, 1],
+        :timestep => [1, 1, 2, 2],
+        :technology => repeat(["Solar", "Nuclear"], 2),
+        :value => 5:8,
+      ])
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        false,
+        1,
+      )
+    end
+  end
+
+  @testset "Dataframe with different keys passed for initial representatives" begin
+    @test_throws ArgumentError(
+      "Initial representatives and clustering data do not have the same keys\n" *
+      "There are 0 extra keys in initial representatives\n" *
+      "and 6 extra keys in clustering data.",
+    ) begin
+      clustering_data = DataFrame([
+        :period => repeat(1:2; inner = 6),
+        :timestep => repeat(1:3; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 6),
+        :value => 5:16,
+      ])
+      aux_clustering = find_auxiliary_data(clustering_data)
+      initial_representatives = DataFrame([
+        :period => repeat(1:2; inner = 3),
+        :timestep => repeat(1:3; outer = 2),
+        :technology => repeat(["Solar"], 6),
+        :value => 5:10,
       ])
       validate_initial_representatives(
         initial_representatives,
