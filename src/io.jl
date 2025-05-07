@@ -27,11 +27,14 @@ function write_clustering_result_to_tables(
   connection,
   clustering_result::TulipaClustering.ClusteringResult,
 )
+  years = DataFrame(; :year => clustering_result.profiles.year |> unique)
+
   DuckDB.register_data_frame(connection, clustering_result.profiles, "profiles_rep_periods")
+  mapping_df = weight_matrix_to_df(clustering_result.weight_matrix)
 
   DuckDB.register_data_frame(
     connection,
-    weight_matrix_to_df(clustering_result.weight_matrix),
+    crossjoin(years, mapping_df),
     "rep_periods_mapping",
   )
 
@@ -39,14 +42,11 @@ function write_clustering_result_to_tables(
   num_rep_periods = size(clustering_result.weight_matrix, 2)
   period_duration = fill(aux.period_duration, num_rep_periods)
   period_duration[end] = aux.last_period_duration
-  DuckDB.register_data_frame(
-    connection,
-    DataFrame(;
-      rep_period = 1:num_rep_periods,
-      num_timesteps = period_duration,
-      resolution = 1.0,
-    ),
-    "rep_periods_data",
+  rp_data_df = DataFrame(;
+    rep_period = 1:num_rep_periods,
+    num_timesteps = period_duration,
+    resolution = 1.0,
   )
+  DuckDB.register_data_frame(connection, crossjoin(years, rp_data_df), "rep_periods_data")
   return nothing
 end

@@ -56,10 +56,11 @@ end
         :timestep => repeat(1:4; inner = 2),
         :profile_name => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       TulipaClustering.split_into_periods!(clustering_data; period_duration = 2)
 
-      size(clustering_data) == (8, 4)
+      size(clustering_data) == (8, 5)
     end
   end
 end
@@ -67,11 +68,16 @@ end
 @testset "Data validation" begin
   @testset "Make sure that when the columns are right validation works and the key columns are found" begin
     @test begin
-      df =
-        DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :a .=> "a", :value => 1:3])
+      df = DataFrame([
+        :period => [1, 1, 2],
+        :timestep => [1, 2, 1],
+        :a .=> "a",
+        :value => 1:3,
+        :year => 2030,
+      ])
       keys = TulipaClustering.validate_df_and_find_key_columns(df)
 
-      keys == [:timestep, :a]
+      keys == [:timestep, :a, :year]
     end
   end
 
@@ -105,6 +111,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :k_means, init = :kmcen)
@@ -118,6 +125,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result =
@@ -132,6 +140,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
         :value => 5:16,
+        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result = find_representative_periods(
@@ -155,6 +164,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :k_medoids, init = :kmcen)
@@ -168,6 +178,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result =
@@ -182,6 +193,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
         :value => 5:16,
+        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result = find_representative_periods(
@@ -205,6 +217,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :convex_hull)
@@ -216,7 +229,8 @@ end
 @testset "Convex hull with null clustering" begin
   @testset "Make sure that the furthest point from 0 is found as first representative" begin
     @test begin
-      clustering_data = DataFrame(; period = [1, 2], value = [1.0, 0.5], timestep = [1, 1])
+      clustering_data =
+        DataFrame(; period = [1, 2], value = [1.0, 0.5], timestep = [1, 1], year = 2030)
       clustering_result = find_representative_periods(
         clustering_data,
         1;
@@ -236,6 +250,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :bad_method, init = :kmcen)
@@ -249,6 +264,7 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
+        :year => 2030,
       ])
       clustering_result = find_representative_periods(
         clustering_data,
@@ -267,6 +283,7 @@ end
       :timestep => repeat(1:2; inner = 2, outer = 2),
       :technology => repeat(["Solar", "Nuclear"], 4),
       :value => 5:12,
+      :year => 2030,
     ])
     @test_throws ArgumentError find_representative_periods(clustering_data, 0)
     @test_throws ArgumentError find_representative_periods(clustering_data, -1)

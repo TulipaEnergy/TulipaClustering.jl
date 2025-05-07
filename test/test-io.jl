@@ -3,7 +3,7 @@
     dir = joinpath(OUTPUT_FOLDER, "temp")
 
     profile_names = ["solar", "wind"]
-    years = [2030, 2040]
+    years = [2030]
     timeframe_duration = 20
 
     profiles = DataFrame(;

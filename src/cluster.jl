@@ -169,8 +169,8 @@ DataFrame must contain columns `timestep` and `value`
 """
 function validate_df_and_find_key_columns(df::AbstractDataFrame)::Vector{Symbol}
   columns = propertynames(df)
-  if :timestep ∉ columns || :value ∉ columns
-    throw(DomainError(df, "DataFrame must contain columns `timestep` and `value`"))
+  if :timestep ∉ columns || :value ∉ columns || :year ∉ columns
+    throw(DomainError(df, "DataFrame must contain columns `year`, `timestep` and `value`"))
   end
   if :period ∉ columns
     throw(
