@@ -34,6 +34,7 @@
       "profiles_rep_periods",
       "rep_periods_data",
       "rep_periods_mapping",
+      "timeframe_data",
     ]
 
     @testset "rep_periods_data" begin
