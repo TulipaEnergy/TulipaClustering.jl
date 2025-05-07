@@ -14,6 +14,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 ProgressBars = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+TulipaIO = "7b3808b7-0819-42d4-885c-978ba173db11"
 
 [compat]
 CSV = "0.10"
@@ -26,4 +27,5 @@ LinearAlgebra = "1.6"
 ProgressBars = "1"
 SparseArrays = "1.6"
 Statistics = "1"
+TulipaIO = "0.4.3"
 julia = "1.10"

@@ -3,12 +3,21 @@
     dir = joinpath(OUTPUT_FOLDER, "temp")
 
     profile_names = ["solar", "wind"]
+    years = [2030]
     timeframe_duration = 20
 
     profiles = DataFrame(;
-      profile_name = repeat(profile_names; inner = timeframe_duration),
-      timestep = repeat(1:timeframe_duration; outer = length(profile_names)),
-      value = rand(length(profile_names) * timeframe_duration),
+      profile_name = repeat(
+        profile_names;
+        inner = timeframe_duration,
+        outer = length(years),
+      ),
+      timestep = repeat(
+        1:timeframe_duration;
+        outer = length(profile_names) * length(years),
+      ),
+      value = rand(length(profile_names) * timeframe_duration * length(years)),
+      year = repeat(years; inner = timeframe_duration * length(profile_names)),
     )
 
     num_rep_periods = 3
@@ -25,6 +34,7 @@
       "profiles_rep_periods",
       "rep_periods_data",
       "rep_periods_mapping",
+      "timeframe_data",
     ]
 
     @testset "rep_periods_data" begin
