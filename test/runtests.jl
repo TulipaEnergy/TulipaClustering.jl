@@ -12,6 +12,8 @@ using TulipaIO
 const INPUT_FOLDER = joinpath(@__DIR__, "inputs")
 const OUTPUT_FOLDER = joinpath(@__DIR__, "outputs")
 
+include("utils.jl")
+
 #=
 Don't add your tests to runtests.jl. Instead, create files named
 
