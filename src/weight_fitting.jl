@@ -175,7 +175,7 @@ function fit_rep_period_weights!(
   clustering_matrix::Matrix{Float64},
   rp_matrix::Matrix{Float64};
   weight_type::Symbol = :dirac,
-  tol::Float64 = 10e-3,
+  tol::Float64 = 1e-2,
   show_progress = false,
   args...,
 )
@@ -270,7 +270,7 @@ The arguments:
 function fit_rep_period_weights!(
   clustering_result::ClusteringResult;
   weight_type::Symbol = :dirac,
-  tol::Float64 = 10e-3,
+  tol::Float64 = 1e-2,
   args...,
 )
   fit_rep_period_weights!(

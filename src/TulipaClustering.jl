@@ -12,8 +12,10 @@ using SparseArrays
 using Statistics
 
 include("structures.jl")
+include("data-validation.jl")
 include("io.jl")
 include("weight_fitting.jl")
 include("cluster.jl")
+include("convenience.jl")
 
 end
