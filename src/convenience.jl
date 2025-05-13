@@ -197,7 +197,7 @@ function transform_wide_to_long!(
   exclude_str = join(exclude_columns, ", ")
   DuckDB.query(
     connection,
-    "CREATE TABLE $long_table_name AS
+    "CREATE OR REPLACE TABLE $long_table_name AS
     UNPIVOT $wide_table_name
     ON COLUMNS(* EXCLUDE ($exclude_str))
     INTO

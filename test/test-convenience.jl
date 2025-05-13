@@ -25,6 +25,10 @@
   @test size(df) == (72, 4)
   @test sort(names(df)) == ["profile_name", "timestep", "value", "year"]
   @test df.value == [2.0 * (1:24); (1:24) .* (1:24); fill(0.0, 24)]
+
+  @testset "It doesn't throw when called twice" begin
+    transform_wide_to_long!(connection, "t_wide", "t_long")
+  end
 end
 
 @testset "cluster! with database_schema '$database_schema'" for database_schema in
@@ -118,6 +122,10 @@ end
     @test df_profiles_rep_periods.timestep ==
           repeat(1:period_duration; outer = length(profile_names) * length(years) * num_rps)
   end
+
+  @testset "It doesn't throw when called twice" begin
+    cluster!(connection, period_duration, num_rps; database_schema)
+  end
 end
 
 @testset "dummy_cluster! with database_schema '$database_schema'" for database_schema in
@@ -177,4 +185,8 @@ end
   )
   @test df_profiles_rep_periods.timestep ==
         repeat(1:period_duration; outer = length(profile_names) * length(years) * num_rps)
+
+  @testset "It doesn't throw when called twice" begin
+    dummy_cluster!(connection; database_schema)
+  end
 end
