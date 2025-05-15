@@ -11,6 +11,7 @@ export cluster!, dummy_cluster!, transform_wide_to_long!
         drop_incomplete_last_period::Bool = false,
         method::Symbol = :k_means,
         distance::SemiMetric = SqEuclidean(),
+        initial_representatives::AbstractDataFrame = DataFrame(),
         weight_type::Symbol = :convex,
         tol::Float64 = 1e-2,
         clustering_kwargs = Dict(),
@@ -50,6 +51,11 @@ finally `write_clustering_result_to_tables`.
   shorter representative period
 - `method` (default `:k_means``): clustering method to use, either `:k_means` and `:k_medoids`
 - `distance` (default `Distances.SqEuclidean()`): semimetric used to measure distance between data points.
+- `initial_representatives` initial representatives that should be
+    included in the clustering. The period column in the initial representatives
+    should be 1-indexed and the key columns should be the same as in the clustering data.
+    For the hull methods it will be added before clustering, for :k_means and :k_medoids
+    it will be added after clustering.
 - `weight_type` (default `:convex`): the type of weights to find; possible values are:
     - `:convex`: each period is represented as a convex sum of the
       representative periods (a sum with nonnegative weights adding into one)
@@ -73,6 +79,7 @@ function cluster!(
   drop_incomplete_last_period::Bool = false,
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
+  initial_representatives::AbstractDataFrame = DataFrame(),
   weight_type::Symbol = :convex,
   tol::Float64 = 1e-2,
   clustering_kwargs = Dict(),
@@ -105,6 +112,7 @@ function cluster!(
     drop_incomplete_last_period,
     method,
     distance,
+    initial_representatives,
     clustering_kwargs...,
   )
   fit_rep_period_weights!(clusters; weight_type, tol, weight_fitting_kwargs...)
