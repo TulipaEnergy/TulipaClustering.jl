@@ -572,7 +572,7 @@ function find_representative_periods(
 
   # 3. Build the clustering matrix
 
-  if method ∈ [:k_means, :k_medoids] && !isempty(initial_representatives)
+  if method in [:k_means, :k_medoids] && !isempty(initial_representatives)
     # If clustering is k-means or k-medoids we remove amount of initial representatives from n_rp
     n_rp -= i_rp
     clustering_matrix, keys = df_to_matrix_and_keys(
@@ -580,7 +580,7 @@ function find_representative_periods(
       aux.key_columns,
     )
 
-  elseif method ∈ [:convex_hull, :convex_hull_with_null, :conical_hull] &&
+  elseif method in [:convex_hull, :convex_hull_with_null, :conical_hull] &&
          !isempty(initial_representatives)
     # If clustering is one of the hull methods, we add initial representatives to the clustering matrix in front
     updated_clustering_data = deepcopy(clustering_data)
@@ -738,7 +738,7 @@ function find_representative_periods(
   end
 
   # In case of initial representatives and a non hull method, we add them now
-  if !isempty(initial_representatives) && method ∈ [:k_means, :k_medoids]
+  if !isempty(initial_representatives) && method in [:k_means, :k_medoids]
     representatives_to_add =
       select!(initial_representatives, :period => :rep_period, aux.key_columns..., :value)
     representatives_to_add.rep_period .= representatives_to_add.rep_period .+ n_rp
