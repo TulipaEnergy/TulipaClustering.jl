@@ -1,4 +1,5 @@
-export find_representative_periods, split_into_periods!
+export find_representative_periods,
+  split_into_periods!, find_auxiliary_data, validate_initial_representatives
 
 """
     combine_periods!(df)
@@ -476,6 +477,7 @@ end
     drop_incomplete_last_period = false,
     method = :k_means,
     distance = SqEuclidean(),
+    initial_representatives = DataFrame(),
     args...,
   )
 
@@ -493,6 +495,11 @@ Finds representative periods via data clustering.
     shorter representative period
   - `method`: clustering method to use, either `:k_means` and `:k_medoids`
   - `distance`: semimetric used to measure distance between data points.
+  - `initial_representatives` initial representatives that should be
+    included in the clustering. The period column in the initial representatives
+    should be 1-indexed and the key columns should be the same as in the clustering data.
+    For the hull methods it will be added before clustering, for :k_means and :k_medoids
+    it will be added after clustering.
   - other named arguments can be provided; they are passed to the clustering method.
 """
 function find_representative_periods(
@@ -501,9 +508,10 @@ function find_representative_periods(
   drop_incomplete_last_period::Bool = false,
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
+  initial_representatives::AbstractDataFrame = DataFrame(),
   args...,
 )
-  # Check that the number of RPs makes sense. The first check can be done immediately,
+  # 1. Check that the number of RPs makes sense. The first check can be done immediately,
   # The second check is done after we compute the auxiliary data
   if n_rp < 1
     throw(
@@ -516,6 +524,7 @@ function find_representative_periods(
   # Find auxiliary data and pre-compute additional constants that are used multiple times alter
   aux = find_auxiliary_data(clustering_data)
   n_periods = aux.n_periods
+
   if n_rp > n_periods
     throw(
       ArgumentError(
@@ -523,9 +532,24 @@ function find_representative_periods(
       ),
     )
   end
+
   has_incomplete_last_period = aux.last_period_duration ≠ aux.period_duration
   is_last_period_excluded = has_incomplete_last_period && !drop_incomplete_last_period
   n_complete_periods = has_incomplete_last_period ? n_periods - 1 : n_periods
+
+  # Check that the initial representatives are compatible with the clustering data
+  if !isempty(initial_representatives)
+    validate_initial_representatives(
+      initial_representatives,
+      clustering_data,
+      aux,
+      is_last_period_excluded,
+      n_rp,
+    )
+    i_rp = maximum(initial_representatives.period) # number of provided representative periods
+  else
+    i_rp = 0
+  end
 
   # 2. Find the weights of the two types of periods and pre-build the weight matrix.
   # We assume that the only period that can be incomplete (i.e., has a duration
@@ -548,14 +572,42 @@ function find_representative_periods(
 
   # 3. Build the clustering matrix
 
-  # First, find the demand matrix and rescale it if needed
-  clustering_matrix, keys = df_to_matrix_and_keys(
-    clustering_data[clustering_data.period .≤ n_complete_periods, :],
-    aux.key_columns,
-  )
+  if method in [:k_means, :k_medoids] && !isempty(initial_representatives)
+    # If clustering is k-means or k-medoids we remove amount of initial representatives from n_rp
+    n_rp -= i_rp
+    clustering_matrix, keys = df_to_matrix_and_keys(
+      clustering_data[clustering_data.period .≤ n_complete_periods, :],
+      aux.key_columns,
+    )
+
+  elseif method in [:convex_hull, :convex_hull_with_null, :conical_hull] &&
+         !isempty(initial_representatives)
+    # If clustering is one of the hull methods, we add initial representatives to the clustering matrix in front
+    updated_clustering_data = deepcopy(clustering_data)
+    updated_clustering_data.period = updated_clustering_data.period .+ i_rp
+    clustering_data = vcat(initial_representatives, updated_clustering_data)
+
+    clustering_matrix, keys = df_to_matrix_and_keys(
+      clustering_data[
+        clustering_data.period .≤ (n_complete_periods + maximum(
+          initial_representatives.period,
+        )),
+        :,
+      ],
+      aux.key_columns,
+    )
+  else
+    clustering_matrix, keys = df_to_matrix_and_keys(
+      clustering_data[clustering_data.period .≤ n_complete_periods, :],
+      aux.key_columns,
+    )
+  end
 
   # 4. Do the clustering, now that the data is transformed into a matrix
-  if method ≡ :k_means
+  if n_rp == 0 # If due to the additional representatives we have no clustering, create an empty placeholder
+    rp_matrix = nothing
+    assignments = Int[]
+  elseif method ≡ :k_means
     # Do the clustering
     kmeans_result = kmeans(clustering_matrix, n_rp; distance, args...)
 
@@ -573,16 +625,28 @@ function find_representative_periods(
     assignments = kmedoids_result.assignments
     aux.medoids = kmedoids_result.medoids
   elseif method ≡ :convex_hull
-    # Do the clustering
-    hull_indices = greedy_convex_hull(clustering_matrix; n_points = n_rp, distance)
+    # Do the clustering, with initial indices if provided
+    initial_indices = if !isempty(initial_representatives)
+      collect(1:i_rp)
+    else
+      nothing
+    end
+    hull_indices = greedy_convex_hull(
+      clustering_matrix;
+      initial_indices = initial_indices,
+      n_points = n_rp,
+      distance,
+    )
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
     assignments = [
       argmin([
-        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+        distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
+        h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
+    clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
     aux.medoids = hull_indices
   elseif method ≡ :convex_hull_with_null
     # Check if we can add null to the clustering matrix. The distance to null can
@@ -602,8 +666,12 @@ function find_representative_periods(
     matrix = [zeros(size(clustering_matrix, 1), 1) clustering_matrix]
 
     # Do the clustering
-    hull_indices =
-      greedy_convex_hull(matrix; n_points = n_rp + 1, distance, initial_indices = [1])
+    hull_indices = greedy_convex_hull(
+      matrix;
+      n_points = n_rp + 1,
+      distance,
+      initial_indices = collect(1:(i_rp + 1)),
+    )
 
     # Remove null from the beginning and shift all indices by one
     popfirst!(hull_indices)
@@ -613,9 +681,12 @@ function find_representative_periods(
     rp_matrix = clustering_matrix[:, hull_indices]
     assignments = [
       argmin([
-        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+        distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
+        h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
+    clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
+
     aux.medoids = hull_indices
   elseif method ≡ :conical_hull
     # Do a gnomonic projection (normalization) of the data
@@ -629,34 +700,69 @@ function find_representative_periods(
       i in axes(clustering_matrix, 1), j in axes(clustering_matrix, 2)
     ]
 
-    # Do the clustering
+    initial_indices = if !isempty(initial_representatives)
+      collect(1:i_rp)
+    else
+      nothing
+    end
+
     hull_indices = greedy_convex_hull(
       projected_matrix;
       n_points = n_rp,
       distance,
       mean_vector = normal_vector,
+      initial_indices = initial_indices,
     )
 
     # Reinterpret the results
     rp_matrix = clustering_matrix[:, hull_indices]
+
     assignments = [
       argmin([
-        distance(clustering_matrix[:, h], clustering_matrix[:, p]) for h in hull_indices
+        distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
+        h in hull_indices
       ]) for p in 1:n_complete_periods
     ]
+    clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
   else
     throw(ArgumentError("Clustering method is not supported"))
-  end
-
-  # Fill in the weight matrix using the assignments
-  for (p, rp) in enumerate(assignments)
-    weight_matrix[p, rp] = complete_period_weight
   end
 
   # 5. Reinterpret the clustering results into a format we need
 
   # First, convert the matrix data back to dataframes using the previously saved key columns
-  rp_df = matrix_and_keys_to_df(rp_matrix, keys)
+  rp_df = if rp_matrix ≡ nothing
+    nothing
+  else
+    matrix_and_keys_to_df(rp_matrix, keys)
+  end
+
+  # In case of initial representatives and a non hull method, we add them now
+  if !isempty(initial_representatives) && method in [:k_means, :k_medoids]
+    representatives_to_add =
+      select!(initial_representatives, :period => :rep_period, aux.key_columns..., :value)
+    representatives_to_add.rep_period .= representatives_to_add.rep_period .+ n_rp
+    rp_df = if rp_df === nothing
+      representatives_to_add
+    else
+      vcat(rp_df, representatives_to_add)
+    end
+    rename!(rp_df, :rep_period => :period)
+    rp_matrix, keys = df_to_matrix_and_keys(rp_df, aux.key_columns)
+    rename!(rp_df, :period => :rep_period)
+    rp_matrix
+    n_rp += i_rp
+  end
+
+  assignments = [
+    argmin([
+      distance(clustering_matrix[:, p], rp_matrix[:, r]) for r in axes(rp_matrix, 2)
+    ]) for p in 1:n_complete_periods
+  ]
+
+  for (p, rp) in enumerate(assignments)
+    weight_matrix[p, rp] = complete_period_weight
+  end
 
   # Next, re-append the last period if it was excluded from clustering
   if is_last_period_excluded
@@ -674,4 +780,70 @@ function find_representative_periods(
   end
 
   return ClusteringResult(rp_df, weight_matrix, clustering_matrix, rp_matrix, aux)
+end
+
+function validate_initial_representatives(
+  initial_representatives::AbstractDataFrame,
+  clustering_data::AbstractDataFrame,
+  aux_clustering::AuxiliaryClusteringData,
+  last_period_excluded::Bool,
+  n_rp::Int,
+)
+
+  # Calling find_auxiliary_data on the initial representatives already checks whether the dataframes satisfies some of the base requirements (:period, :value, :timestep)
+  aux_initial = find_auxiliary_data(initial_representatives)
+
+  # 1. Check that the column names for initial representatives are the same as for clustering data
+  if aux_clustering.key_columns ≠ aux_initial.key_columns
+    throw(
+      ArgumentError(
+        "Key columns of initial represenatives do not match clustering data\nExpected was: $(aux_clustering.key_columns) \nFound was: $(aux_initial.key_columns)",
+      ),
+    )
+  end
+
+  # 2. Check that initial representatives do not contain a incomplete period
+  if aux_initial.last_period_duration ≠ aux_clustering.period_duration
+    throw(
+      ArgumentError(
+        "Initial representatives have an incomplete last period, which is not allowed",
+      ),
+    )
+  end
+
+  # 3. Check that the initial representatives and clustering data have the same keys
+  more_keys_initial = size(
+    antijoin(initial_representatives, clustering_data; on = aux_clustering.key_columns),
+    1,
+  )
+  more_keys_clustering = size(
+    antijoin(clustering_data, initial_representatives; on = aux_clustering.key_columns),
+    1,
+  )
+  if more_keys_initial > 0 || more_keys_clustering > 0
+    throw(
+      ArgumentError(
+        "Initial representatives and clustering data do not have the same keys\n" *
+        "There are $(more_keys_initial) extra keys in initial representatives\n" *
+        "and $(more_keys_clustering) extra keys in clustering data.",
+      ),
+    )
+  end
+
+  # 4. Make sure that initial representatives does not contain more periods than asked
+  if !last_period_excluded && n_rp < aux_initial.n_periods
+    throw(
+      ArgumentError(
+        "The number of representative periods is $n_rp but has to be at least $(aux_initial.n_periods).",
+      ),
+    )
+  end
+
+  if last_period_excluded && n_rp < aux_initial.n_periods + 1
+    throw(
+      ArgumentError(
+        "The number of representative periods is $n_rp but has to be at least $(aux_initial.n_periods + 1).",
+      ),
+    )
+  end
 end
