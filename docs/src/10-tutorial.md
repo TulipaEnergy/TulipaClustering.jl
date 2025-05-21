@@ -99,14 +99,12 @@ Given the name of the source table (in this case, `profiles_wide`), we can creat
 ```@example duckdb_example
 using TulipaClustering
 
-# We will save the output in the 'input' schema
-DuckDB.query(connection, "CREATE SCHEMA IF NOT EXISTS input")
-transform_wide_to_long!(connection, "profiles_wide", "input.profiles")
+transform_wide_to_long!(connection, "profiles_wide", "profiles")
 
-nice_query("FROM input.profiles LIMIT 10")
+nice_query("FROM profiles LIMIT 10")
 ```
 
-Here, we decided to save the long profiles table in the `input` schema to use in the clustering below.
+Here, we decided to save the long profiles table with the name `profiles` to use in the clustering below.
 
 ## Dummy Clustering
 
@@ -114,29 +112,29 @@ A dummy cluster will essentially ignore the clustering and create the necessary 
 
 ```@example duckdb_example
 for table_name in (
-    "cluster.rep_periods_data",
-    "cluster.rep_periods_mapping",
-    "cluster.profiles_rep_periods",
-    "cluster.timeframe_data",
+    "rep_periods_data",
+    "rep_periods_mapping",
+    "profiles_rep_periods",
+    "timeframe_data",
 )
     DuckDB.query(connection, "DROP TABLE IF EXISTS $table_name")
 end
 
 clusters = dummy_cluster!(connection)
 
-nice_query("FROM cluster.rep_periods_data LIMIT 5")
+nice_query("FROM rep_periods_data LIMIT 5")
 ```
 
 ```@example duckdb_example
-nice_query("FROM cluster.rep_periods_mapping LIMIT 5")
+nice_query("FROM rep_periods_mapping LIMIT 5")
 ```
 
 ```@example duckdb_example
-nice_query("FROM cluster.profiles_rep_periods LIMIT 5")
+nice_query("FROM profiles_rep_periods LIMIT 5")
 ```
 
 ```@example duckdb_example
-nice_query("FROM cluster.timeframe_data LIMIT 5")
+nice_query("FROM timeframe_data LIMIT 5")
 ```
 
 ## Clustering
@@ -151,27 +149,27 @@ period_duration = 24
 num_rps = 3
 
 for table_name in (
-    "cluster.rep_periods_data",
-    "cluster.rep_periods_mapping",
-    "cluster.profiles_rep_periods",
-    "cluster.timeframe_data",
+    "rep_periods_data",
+    "rep_periods_mapping",
+    "profiles_rep_periods",
+    "timeframe_data",
 )
     DuckDB.query(connection, "DROP TABLE IF EXISTS $table_name")
 end
 
 clusters = cluster!(connection, period_duration, num_rps)
 
-nice_query("FROM cluster.rep_periods_data LIMIT 5")
+nice_query("FROM rep_periods_data LIMIT 5")
 ```
 
 ```@example duckdb_example
-nice_query("FROM cluster.rep_periods_mapping LIMIT 5")
+nice_query("FROM rep_periods_mapping LIMIT 5")
 ```
 
 ```@example duckdb_example
-nice_query("FROM cluster.profiles_rep_periods LIMIT 5")
+nice_query("FROM profiles_rep_periods LIMIT 5")
 ```
 
 ```@example duckdb_example
-nice_query("FROM cluster.timeframe_data LIMIT 5")
+nice_query("FROM timeframe_data LIMIT 5")
 ```

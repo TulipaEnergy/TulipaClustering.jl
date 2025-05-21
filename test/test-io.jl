@@ -1,5 +1,9 @@
 @testset "Output saving" begin
-  @testset "Make sure clustering result is saved" begin
+  @testset "Make sure clustering result is saved for database_schema = '$database_schema'" for database_schema in
+                                                                                               [
+    "",
+    "cluster",
+  ]
     dir = joinpath(OUTPUT_FOLDER, "temp")
 
     profile_names = ["solar", "wind"]
@@ -27,17 +31,27 @@
     clustering_data = find_representative_periods(profiles, num_rep_periods)
 
     connection = DBInterface.connect(DuckDB.DB)
-    TulipaClustering.write_clustering_result_to_tables(connection, clustering_data)
+    TulipaClustering.write_clustering_result_to_tables(
+      connection,
+      clustering_data;
+      database_schema,
+    )
+    prefix = ""
+    where_string = ""
+    if database_schema == ""
+      where_string = "WHERE schema_name = 'main'"
+    else
+      prefix = "$database_schema."
+      where_string = "WHERE schema_name = '$database_schema'"
+    end
 
-    tables = [
-      row.table_name for row in DBInterface.execute(
-        connection,
-        "SELECT table_name
-        FROM duckdb_tables()
-        WHERE schema_name = 'cluster'
-        ORDER BY table_name",
-      )
-    ]
+    tables = [row.table_name for row in DBInterface.execute(
+      connection,
+      "SELECT table_name
+      FROM duckdb_tables()
+      $where_string
+      ORDER BY table_name",
+    )]
     @test tables == Union{Missing, String}[
       "profiles_rep_periods",
       "rep_periods_data",
@@ -47,7 +61,7 @@
 
     @testset "rep_periods_data" begin
       rep_periods_data_df =
-        DBInterface.execute(connection, "SELECT * FROM cluster.rep_periods_data") |>
+        DBInterface.execute(connection, "SELECT * FROM $(prefix)rep_periods_data") |>
         DataFrame
       @test rep_periods_data_df.rep_period == 1:num_rep_periods
       @test rep_periods_data_df.num_timesteps == [

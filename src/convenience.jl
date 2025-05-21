@@ -5,9 +5,9 @@ export cluster!, dummy_cluster!, transform_wide_to_long!
         connection,
         period_duration,
         num_rps;
-        input_database_schema = "input",
+        input_database_schema = "",
         input_profile_table_name = "profiles",
-        database_schema = "cluster",
+        database_schema = "",
         drop_incomplete_last_period::Bool = false,
         method::Symbol = :k_means,
         distance::SemiMetric = SqEuclidean(),
@@ -41,9 +41,9 @@ finally `write_clustering_result_to_tables`.
 
 **Keyword arguments**
 
-- `input_database_schema` (default `"input"`): Schema of the input tables
+- `input_database_schema` (default `""`): Schema of the input tables
 - `input_profile_table_name` (default `"profiles"`): Default name of the `profiles` table inside the above schemaa
-- `database_schema` (default `"cluster"`): Schema of the output tables
+- `database_schema` (default `""`): Schema of the output tables
 - `drop_incomplete_last_period` (default `false`): controls how the last period is treated if it
   is not complete: if this parameter is set to `true`, the incomplete period
   is dropped and the weights are rescaled accordingly; otherwise, clustering
@@ -73,9 +73,9 @@ function cluster!(
   connection,
   period_duration,
   num_rps;
-  input_database_schema = "input",
+  input_database_schema = "",
   input_profile_table_name = "profiles",
-  database_schema = "cluster",
+  database_schema = "",
   drop_incomplete_last_period::Bool = false,
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
@@ -138,7 +138,7 @@ See [`cluster!`](@ref) for more details of what is created.
 """
 function dummy_cluster!(
   connection;
-  input_database_schema = "input",
+  input_database_schema = "",
   input_profile_table_name = "profiles",
   kwargs...,
 )

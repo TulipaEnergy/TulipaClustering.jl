@@ -2,16 +2,21 @@ function _new_connection(;
   years = [2030, 2050],
   profile_names = ["name001", "name002"],
   num_timesteps::Int = 24,
+  database_schema = "",
 )
   @assert length(years) > 0
   @assert length(profile_names) > 0
   @assert num_timesteps ≥ 1
   connection = DBInterface.connect(DuckDB.DB)
   profile_names_str = join(["'$x'" for x in profile_names], ", ")
-  DuckDB.query(connection, "CREATE SCHEMA input")
+  prefix = ""
+  if database_schema != ""
+    DuckDB.query(connection, "CREATE SCHEMA $database_schema")
+    prefix = "$database_schema."
+  end
   DuckDB.query(
     connection,
-    "CREATE TABLE input.profiles AS
+    "CREATE TABLE $(prefix)profiles AS
     SELECT
       profile_name,
       unnest($years) AS year,
