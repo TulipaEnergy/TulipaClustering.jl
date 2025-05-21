@@ -26,7 +26,7 @@ Writes a [`TulipaClustering.ClusteringResult`](@ref) to CSV files in the
 function write_clustering_result_to_tables(
   connection,
   clustering_result::TulipaClustering.ClusteringResult;
-  database_schema = "cluster",
+  database_schema = "",
 )
   years = DataFrame(; :year => clustering_result.profiles.year |> unique)
   mapping_df = weight_matrix_to_df(clustering_result.weight_matrix)

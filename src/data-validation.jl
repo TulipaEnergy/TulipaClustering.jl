@@ -22,7 +22,7 @@ Throws a `DataValidationException` if any error is found.
 """
 function validate_data!(
   connection;
-  input_database_schema::String = "input",
+  input_database_schema::String = "",
   table_names::Dict = Dict("profiles" => "profiles"),
 )
   error_messages = String[]
@@ -54,10 +54,15 @@ function _validate_required_tables_and_columns!(
   error_messages = String[]
   table_name = table_names["profiles"]
 
+  schema_addendum = if input_database_schema != ""
+    "AND schema_name = '$input_database_schema'"
+  else
+    ""
+  end
   columns_from_connection = [
     row.column_name for row in DuckDB.query(
       connection,
-      "SELECT column_name FROM duckdb_columns() WHERE table_name = '$table_name' AND schema_name = '$input_database_schema'",
+      "SELECT column_name FROM duckdb_columns() WHERE table_name = '$table_name' $schema_addendum",
     )
   ]
   if length(columns_from_connection) == 0
