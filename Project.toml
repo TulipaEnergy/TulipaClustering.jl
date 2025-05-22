@@ -1,7 +1,7 @@
 name = "TulipaClustering"
 uuid = "314fac8b-c762-4aa3-9d12-851379729163"
 authors = ["Greg Neustroev <G.Neustroev@tudelft.nl> and contributors"]
-version = "0.4.0"
+version = "0.4.1"
 
 [deps]
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
@@ -27,5 +27,5 @@ LinearAlgebra = "1.6"
 ProgressBars = "1"
 SparseArrays = "1.6"
 Statistics = "1"
-TulipaIO = "0.4.3"
+TulipaIO = "0.4.3, 0.5"
 julia = "1.10"
