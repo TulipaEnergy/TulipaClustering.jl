@@ -25,7 +25,7 @@ pkg> add TulipaClustering
 
 ## Bug reports and discussions
 
-If you think you have found a bug, feel free to open an [issue](https://github.com/TulipaEnergy/TulipaClustering.jl/issues). If you have a general question or idea, start a discussion on the main repo [here](https://github.com/TulipaEnergy/TulipaEnergyModel.jl/discussions).
+If you think you have found a bug, feel free to open an [issue](https://github.com/TulipaEnergy/TulipaClustering.jl/issues). If you have a general question or idea, start a discussion on the main repo [discussions](https://github.com/TulipaEnergy/TulipaEnergyModel.jl/discussions).
 
 ## Contributing
 
