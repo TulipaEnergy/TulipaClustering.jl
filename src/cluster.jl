@@ -440,7 +440,8 @@ function greedy_convex_hull(
 
       # Check whether the distance was previosly computed
       cached_distance = get(distances_cache, column_index, Inf)
-      if distance(target_vector, last_added_vector) ≥ cached_distance
+      d_temp = distance(target_vector, last_added_vector)
+      if d_temp ≥ cached_distance
         d = cached_distance
       else
         subgradient = x -> hull_matrix' * (hull_matrix * x - target_vector)
@@ -449,7 +450,8 @@ function greedy_convex_hull(
           projected_subgradient_descent!(x; subgradient, projection = project_onto_simplex)
         projected_target = hull_matrix * x
         d = distance(projected_target, target_vector)
-        distances_cache[column_index] = d
+        d_min = min(d, d_temp)
+        distances_cache[column_index] = d_min
       end
 
       if d > max_distance
