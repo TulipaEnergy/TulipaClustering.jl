@@ -454,8 +454,8 @@ function greedy_convex_hull(
         distances_cache[column_index] = d_min
       end
 
-      if d > max_distance
-        max_distance = d
+      if d_min > max_distance
+        max_distance = d_min
         furthest_vector_index = column_index
       end
     end
