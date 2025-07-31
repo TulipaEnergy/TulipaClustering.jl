@@ -164,7 +164,7 @@ end
 Convenience function to convert a table in wide format to long format using DuckDB.
 Originally aimed at converting a profile table like the following:
 
-| year | timestep | name1 | name2 | ⋯  | name2 |
+| year | timestep | name1 | name2 | ⋯  | nameN |
 | ---- | -------- | ----- | ----- | -- | ----- |
 | 2030 |        1 |   1.0 |   2.5 | ⋯  |   0.0 |
 | 2030 |        2 |   1.5 |   2.6 | ⋯  |   0.0 |
@@ -181,15 +181,17 @@ To a table like the following:
 | 2030 |        2 |        name2 |   2.6 |
 | 2030 |        3 |        name2 |   2.6 |
 |    ⋮ |        ⋮ |            ⋮ |     ⋮ |
-| 2030 |        1 |        name3 |   0.0 |
-| 2030 |        2 |        name3 |   0.0 |
-| 2030 |        3 |        name3 |   0.0 |
+| 2030 |        1 |        nameN |   0.0 |
+| 2030 |        2 |        nameN |   0.0 |
+| 2030 |        3 |        nameN |   0.0 |
 
 This conversion is done using the `UNPIVOT` SQL command from DuckDB.
 
 ## Keyword arguments
 
-- `exclude_columns = ["year", "timestep"]`: Which tables to exclude from the conversion
+- `exclude_columns = ["year", "timestep"]`: Which tables to exclude from the conversion.
+  Note that if you have more columns that you want to exclude from the wide table, e.g., `scenario`,
+  you can add them to this list, e.g., `["scenario", "year", "timestep"]`.
 - `name_column = "profile_name"`: Name of the new column that contains the names of the old columns
 - `value_column = "value"`: Name of the new column that holds the values from the old columns
 """

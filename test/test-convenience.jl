@@ -1,4 +1,4 @@
-@testset "Trasform wide in long" begin
+@testset "Transform wide in long" begin
   connection = DBInterface.connect(DuckDB.DB)
   DuckDB.query(
     connection,
@@ -28,6 +28,50 @@
 
   @testset "It doesn't throw when called twice" begin
     transform_wide_to_long!(connection, "t_wide", "t_long")
+  end
+end
+
+@testset "Transform wide in long with scenario column" begin
+  connection = DBInterface.connect(DuckDB.DB)
+  DuckDB.query(
+    connection,
+    "CREATE TABLE t_wide AS
+    SELECT
+           1 AS scenario,
+        2030 AS year,
+           i AS timestep,
+       2.0*i AS name1,
+       i * i AS name2,
+         0.0 AS name3,
+    FROM
+      generate_series(1, 24) AS s(i)
+    ",
+  )
+
+  transform_wide_to_long!(
+    connection,
+    "t_wide",
+    "t_long";
+    exclude_columns = ["scenario", "year", "timestep"],
+  )
+
+  df = DuckDB.query(
+    connection,
+    "FROM t_long
+    ORDER BY profile_name, year, timestep
+    ",
+  ) |> DataFrame
+  @test size(df) == (72, 5)
+  @test sort(names(df)) == ["profile_name", "scenario", "timestep", "value", "year"]
+  @test df.value == [2.0 * (1:24); (1:24) .* (1:24); fill(0.0, 24)]
+
+  @testset "It doesn't throw when called twice" begin
+    transform_wide_to_long!(
+      connection,
+      "t_wide",
+      "t_long";
+      exclude_columns = ["scenario", "year", "timestep"],
+    )
   end
 end
 
