@@ -170,8 +170,8 @@ DataFrame must contain columns `timestep` and `value`
 """
 function validate_df_and_find_key_columns(df::AbstractDataFrame)::Vector{Symbol}
   columns = propertynames(df)
-  if :timestep ∉ columns || :value ∉ columns || :year ∉ columns
-    throw(DomainError(df, "DataFrame must contain columns `year`, `timestep` and `value`"))
+  if :timestep ∉ columns || :value ∉ columns
+    throw(DomainError(df, "DataFrame must contain columns `timestep` and `value`"))
   end
   if :period ∉ columns
     throw(
@@ -191,8 +191,7 @@ end
 
 Calculates auxiliary data associated with the `clustering_data`. These include:
 
-  - `key_columns_demand`: key columns in the demand dataframe
-  - `key_columns_generation_availability`: key columns in the generation availability dataframe
+  - `key_columns`: key columns in the clustering_data dataframe
   - `period_duration`: duration of time periods (in time steps)
   - `last_period_duration`: duration of the last period
   - `n_periods`: total number of periods
