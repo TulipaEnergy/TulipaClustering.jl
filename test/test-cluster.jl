@@ -56,11 +56,10 @@ end
         :timestep => repeat(1:4; inner = 2),
         :profile_name => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       TulipaClustering.split_into_periods!(clustering_data; period_duration = 2)
 
-      size(clustering_data) == (8, 5)
+      size(clustering_data) == (8, 4)
     end
   end
 end
@@ -68,16 +67,11 @@ end
 @testset "Data validation" begin
   @testset "Make sure that when the columns are right validation works and the key columns are found" begin
     @test begin
-      df = DataFrame([
-        :period => [1, 1, 2],
-        :timestep => [1, 2, 1],
-        :a .=> "a",
-        :value => 1:3,
-        :year => 2030,
-      ])
+      df =
+        DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :a .=> "a", :value => 1:3])
       keys = TulipaClustering.validate_df_and_find_key_columns(df)
 
-      keys == [:timestep, :a, :year]
+      keys == [:timestep, :a]
     end
   end
 
@@ -111,7 +105,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :k_means, init = :kmcen)
@@ -125,7 +118,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result =
@@ -140,7 +132,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
         :value => 5:16,
-        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result = find_representative_periods(
@@ -164,7 +155,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :k_medoids, init = :kmcen)
@@ -178,7 +168,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result =
@@ -193,7 +182,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
         :value => 5:16,
-        :year => 2030,
       ])
       clustering_data = clustering_data[1:(end - 2), :]
       clustering_result = find_representative_periods(
@@ -217,7 +205,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :convex_hull)
@@ -229,8 +216,7 @@ end
 @testset "Convex hull with null clustering" begin
   @testset "Make sure that the furthest point from 0 is found as first representative" begin
     @test begin
-      clustering_data =
-        DataFrame(; period = [1, 2], value = [1.0, 0.5], timestep = [1, 1], year = 2030)
+      clustering_data = DataFrame(; period = [1, 2], value = [1.0, 0.5], timestep = [1, 1])
       clustering_result = find_representative_periods(
         clustering_data,
         1;
@@ -250,7 +236,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       clustering_result =
         find_representative_periods(clustering_data, 2; method = :bad_method, init = :kmcen)
@@ -264,7 +249,6 @@ end
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
-        :year => 2030,
       ])
       clustering_result = find_representative_periods(
         clustering_data,
@@ -283,7 +267,6 @@ end
       :timestep => repeat(1:2; inner = 2, outer = 2),
       :technology => repeat(["Solar", "Nuclear"], 4),
       :value => 5:12,
-      :year => 2030,
     ])
     @test_throws ArgumentError find_representative_periods(clustering_data, 0)
     @test_throws ArgumentError find_representative_periods(clustering_data, -1)
@@ -317,14 +300,12 @@ end
 
 @testset "Validating initial representatives" begin
   @testset "DataFrame without periods passed for initial representatives" begin
-    initial_representatives =
-      DataFrame([:year => repeat([2030], 2), :timestep => 1:2, :value => 1:2])
+    initial_representatives = DataFrame([:timestep => 1:2, :value => 1:2])
     @test_throws DomainError(
       initial_representatives,
       "DataFrame must contain column `period`; call split_into_periods! to split it into periods.",
     ) begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -343,10 +324,9 @@ end
 
   @testset "Dataframe with different key columns passed for initial representatives" begin
     @test_throws ArgumentError(
-      "Key columns of initial represenatives do not match clustering data\nExpected was: [:year, :timestep, :technology] \nFound was: [:year, :timestep, :demand]",
+      "Key columns of initial represenatives do not match clustering data\nExpected was: [:timestep, :technology] \nFound was: [:timestep, :demand]",
     ) begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -354,7 +334,6 @@ end
       ])
       aux_clustering = find_auxiliary_data(clustering_data)
       initial_representatives = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :demand => repeat(["Solar", "Nuclear"], 4),
@@ -375,7 +354,6 @@ end
       "Initial representatives have an incomplete last period, which is not allowed",
     ) begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 12),
         :period => repeat(1:2; inner = 6),
         :timestep => repeat(1:3; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 6),
@@ -383,7 +361,6 @@ end
       ])
       aux_clustering = find_auxiliary_data(clustering_data)
       initial_representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => [1, 1, 1, 1],
         :timestep => [1, 1, 2, 2],
         :technology => repeat(["Solar", "Nuclear"], 2),
@@ -406,7 +383,6 @@ end
       "and 6 extra keys in clustering data.",
     ) begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 12),
         :period => repeat(1:2; inner = 6),
         :timestep => repeat(1:3; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 6),
@@ -414,7 +390,6 @@ end
       ])
       aux_clustering = find_auxiliary_data(clustering_data)
       initial_representatives = DataFrame([
-        :year => repeat([2030], 6),
         :period => repeat(1:2; inner = 3),
         :timestep => repeat(1:3; outer = 2),
         :technology => repeat(["Solar"], 6),
@@ -435,7 +410,6 @@ end
       "The number of representative periods is 1 but has to be at least 2.",
     ) begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -443,7 +417,6 @@ end
       ])
       aux_clustering = find_auxiliary_data(clustering_data)
       initial_representatives = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -464,17 +437,15 @@ end
       "The number of representative periods is 2 but has to be at least 3.",
     ) begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
         :value => 5:12,
       ])
-      push!(clustering_data, [2030, 3, 1, "Solar", 6])
-      push!(clustering_data, [2030, 3, 1, "Nuclear", 6])
+      push!(clustering_data, [3, 1, "Solar", 6])
+      push!(clustering_data, [3, 1, "Nuclear", 6])
       aux_clustering = find_auxiliary_data(clustering_data)
       initial_representatives = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -495,7 +466,6 @@ end
   @testset "K-means and complete periods" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -503,7 +473,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1], 4),
         :timestep => repeat(1:2; inner = 2, outer = 1),
         :technology => repeat(["Solar", "Nuclear"], 2),
@@ -525,7 +494,6 @@ end
   @testset "K-medoids and incomplete periods" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -533,15 +501,14 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1], 4),
         :timestep => repeat(1:2; inner = 2, outer = 1),
         :technology => repeat(["Solar", "Nuclear"], 2),
         :value => 1:4,
       ])
 
-      push!(clustering_data, [2030, 3, 1, "Solar", 6])
-      push!(clustering_data, [2030, 3, 1, "Nuclear", 6])
+      push!(clustering_data, [3, 1, "Solar", 6])
+      push!(clustering_data, [3, 1, "Nuclear", 6])
 
       clustering_result = find_representative_periods(
         clustering_data,
@@ -563,7 +530,6 @@ end
   @testset "K-means and incomplete period" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -571,15 +537,14 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1], 4),
         :timestep => repeat(1:2; inner = 2, outer = 1),
         :technology => repeat(["Solar", "Nuclear"], 2),
         :value => 1:4,
       ])
 
-      push!(clustering_data, [2030, 3, 1, "Solar", 6])
-      push!(clustering_data, [2030, 3, 1, "Nuclear", 6])
+      push!(clustering_data, [3, 1, "Solar", 6])
+      push!(clustering_data, [3, 1, "Nuclear", 6])
 
       clustering_result = find_representative_periods(
         clustering_data,
@@ -601,7 +566,6 @@ end
   @testset "K-medoids and complete period" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -609,7 +573,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1], 4),
         :timestep => repeat(1:2; inner = 2, outer = 1),
         :technology => repeat(["Solar", "Nuclear"], 2),
@@ -631,7 +594,6 @@ end
   @testset "rp_matrix also contains initial representatives and at the right place in the right order" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -639,7 +601,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1], 4),
         :timestep => repeat(1:2; inner = 2, outer = 1),
         :technology => repeat(["Nuclear", "Solar"], 2),
@@ -660,7 +621,6 @@ end
   @testset "Initial representatives already all representatives" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -668,7 +628,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1], 4),
         :timestep => repeat(1:2; inner = 2, outer = 1),
         :technology => repeat(["Solar", "Nuclear"], 2),
@@ -692,7 +651,6 @@ end
   @testset "Initial representatives already all representatives convex hull" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -700,7 +658,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Nuclear", "Solar"], 4),
@@ -727,7 +684,6 @@ end
   @testset "Initial representatives already all representatives convex hull with null" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -735,7 +691,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Nuclear", "Solar"], 4),
@@ -762,7 +717,6 @@ end
   @testset "Initial representatives already all representatives conical hull" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -770,7 +724,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Nuclear", "Solar"], 4),
@@ -797,7 +750,6 @@ end
   @testset "Convex hull with one initial representative picks correct initial and second representative" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 12),
         :period => repeat(1:3; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
@@ -805,7 +757,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1]; inner = 4),
         :timestep => repeat(1:2; inner = 2),
         :technology => repeat(["Nuclear", "Solar"], 2),
@@ -834,7 +785,6 @@ end
   @testset "Convex hull with null with one initial representative picks correct initial and second representative" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 12),
         :period => repeat(1:3; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
@@ -842,7 +792,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1]; inner = 4),
         :timestep => repeat(1:2; inner = 2),
         :technology => repeat(["Nuclear", "Solar"], 2),
@@ -864,7 +813,6 @@ end
   @testset "Conical hull with one initial representative picks correct initial and second representative" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 12),
         :period => repeat(1:3; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
@@ -872,7 +820,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1]; inner = 4),
         :timestep => repeat(1:2; inner = 2),
         :technology => repeat(["Nuclear", "Solar"], 2),
@@ -894,7 +841,6 @@ end
   @testset "Convex hull does not contain intial representative in clustering matrix" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 12),
         :period => repeat(1:3; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 3),
         :technology => repeat(["Solar", "Nuclear"], 6),
@@ -902,7 +848,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 4),
         :period => repeat([1]; inner = 4),
         :timestep => repeat(1:2; inner = 2),
         :technology => repeat(["Nuclear", "Solar"], 2),
@@ -924,7 +869,6 @@ end
   @testset "Weights are equal for each method when representatives don't need to be found" begin
     @test begin
       clustering_data = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Solar", "Nuclear"], 4),
@@ -932,7 +876,6 @@ end
       ])
 
       representatives = DataFrame([
-        :year => repeat([2030], 8),
         :period => repeat(1:2; inner = 4),
         :timestep => repeat(1:2; inner = 2, outer = 2),
         :technology => repeat(["Nuclear", "Solar"], 4),

@@ -1,10 +1,8 @@
 function _new_connection(;
-  years = [2030, 2050],
   profile_names = ["name001", "name002"],
   num_timesteps::Int = 24,
   database_schema = "",
 )
-  @assert length(years) > 0
   @assert length(profile_names) > 0
   @assert num_timesteps ≥ 1
   connection = DBInterface.connect(DuckDB.DB)
@@ -19,7 +17,6 @@ function _new_connection(;
     "CREATE TABLE $(prefix)profiles AS
     SELECT
       profile_name,
-      unnest($years) AS year,
       i AS timestep,
       i * 3.14 AS value,
     FROM generate_series(1, $num_timesteps) AS s(i)
