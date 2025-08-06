@@ -152,11 +152,8 @@ end
 
     @test df_profiles_rep_periods.profile_name ==
           repeat(profile_names; inner = period_duration * num_rps)
-    @test df_profiles_rep_periods.rep_period == repeat(
-      1:num_rps;
-      inner = period_duration,
-      outer = length(profile_names),
-    )
+    @test df_profiles_rep_periods.rep_period ==
+          repeat(1:num_rps; inner = period_duration, outer = length(profile_names))
     @test df_profiles_rep_periods.timestep ==
           repeat(1:period_duration; outer = length(profile_names) * num_rps)
   end
