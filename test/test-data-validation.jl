@@ -34,7 +34,7 @@ end
   end
 
   @testset "Missing column" begin
-    for column in ("profile_name", "year", "timestep", "value")
+    for column in ("profile_name", "timestep", "value")
       connection = _new_connection(; database_schema)
       DuckDB.query(connection, "ALTER TABLE $(prefix)profiles RENAME $column TO badname")
       @test_throws TC.DataValidationException TC.validate_data!(

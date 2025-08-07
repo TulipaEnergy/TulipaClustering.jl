@@ -83,7 +83,7 @@ function _validate_required_tables_and_columns!(
     end
   end
 
-  for column in ["profile_name", "year", "timestep", "value"]
+  for column in ["profile_name", "timestep", "value"]
     if !(column in columns_from_connection)
       push!(
         error_messages,
