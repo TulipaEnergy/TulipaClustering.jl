@@ -31,17 +31,21 @@ julia> TulipaClustering.combine_periods!(df)
    3 │         3      3
 ```
 """
-function combine_periods!(df::AbstractDataFrame)
+function combine_periods!(df::AbstractDataFrame; layout = DataFrameLayout())
+  # Unpack layout
+  timestep_col = layout.timestep
+  period_col = layout.period
+
   # First check that df contains a timestep column
-  if columnindex(df, :timestep) == 0
-    throw(DomainError(df, "DataFrame does not contain a column `timestep`"))
+  if columnindex(df, timestep_col) == 0
+    throw(DomainError(df, "DataFrame does not contain a column $timestep_col"))
   end
-  if columnindex(df, :period) == 0
+  if columnindex(df, period_col) == 0
     return  # if there is no column df.period, leave df as is
   end
-  max_t = maximum(df.timestep)
-  df.timestep .= (df.period .- 1) .* max_t .+ df.timestep
-  select!(df, Not(:period))
+  max_t = maximum(df[!, timestep_col])
+  df[!, timestep_col] .= (df[!, period_col] .- 1) .* max_t .+ df[!, timestep_col]
+  select!(df, Not(period_col))
 end
 
 """
