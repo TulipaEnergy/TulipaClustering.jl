@@ -2,15 +2,41 @@ export find_representative_periods,
   split_into_periods!, find_auxiliary_data, validate_initial_representatives
 
 """
-    combine_periods!(df)
+    combine_periods!(df; layout = DataFrameLayout())
 
-Modifies a dataframe `df` by combining the columns `timestep` and `period`
-into a single column `timestep` of global time steps. The period duration is
-inferred automatically from the maximum time step value, assuming that
-periods start with time step 1.
+Combine per-period time steps into a single global `timestep` column in-place.
 
-# Examples
+Given a long-format dataframe `df` with (at least) a per-period time-step
+column and, optionally, a `period` column (names provided by `layout`), this
+function rewrites the `timestep` column so that time becomes a single global,
+monotonically increasing index across all periods, then removes the original
+`period` column.
 
+Period length inference:
+  * The (nominal) period duration `L` is inferred as the maximum value found in
+    the per-period time-step column across the whole dataframe (NOT per period).
+  * Each row's global timestep is computed as `(period - 1) * L + timestep`.
+  * If the final period is shorter than `L`, the resulting global time index will
+    simply end earlier; missing intermediate global timesteps are not created.
+
+Arguments:
+  * `df::AbstractDataFrame` (mutated): Source data in long format.
+  * `layout::DataFrameLayout`: Describes the column names for `period` and
+    `timestep` (defaults to standard names). Pass a custom layout if your
+    dataframe uses different symbols.
+
+Behavior & edge cases:
+  * If the `timestep` column (as specified by `layout`) is missing, a `DomainError` is thrown.
+  * If the `period` column is absent, the function is a no-op (returns immediately).
+  * Non-1-based or non-consecutive per-period timesteps are not validated; unusual
+    values may result in non-contiguous or non-strictly increasing global indices.
+  * Works in-place; the modified dataframe (without `period`) is also returned for convenience.
+
+Complexity: O(n) over the number of rows (simple vectorised arithmetic + column drop).
+
+Examples
+
+Basic usage with default layout:
 ```
 julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :value => 1:3])
 3×3 DataFrame
@@ -30,6 +56,41 @@ julia> TulipaClustering.combine_periods!(df)
    2 │         2      2
    3 │         3      3
 ```
+
+Custom column names via a layout:
+```
+julia> layout = DataFrameLayout(; period = :p, timestep = :ts)
+julia> df = DataFrame([:p => [1,1,2], :ts => [1,2,1], :value => 10:12])
+3×3 DataFrame
+ Row │ p      ts   value
+     │ Int64  Int64  Int64
+─────┼─────────────────────
+   1 │     1     1     10
+   2 │     1     2     11
+   3 │     2     1     12
+
+julia> TulipaClustering.combine_periods!(df; layout)
+3×2 DataFrame
+ Row │ ts    value
+     │ Int64  Int64
+─────┼──────────────
+   1 │    1     10
+   2 │    2     11
+   3 │    3     12
+```
+
+No `period` column (no-op):
+```
+julia> df = DataFrame([:timestep => 1:3, :value => 4:6])
+julia> TulipaClustering.combine_periods!(df)
+3×2 DataFrame
+ Row │ timestep  value
+     │ Int64      Int64
+─────┼──────────────────
+   1 │         1      4
+   2 │         2      5
+   3 │         3      6
+```
 """
 function combine_periods!(df::AbstractDataFrame; layout = DataFrameLayout())
   # Unpack layout
@@ -41,7 +102,7 @@ function combine_periods!(df::AbstractDataFrame; layout = DataFrameLayout())
     throw(DomainError(df, "DataFrame does not contain a column $timestep_col"))
   end
   if columnindex(df, period_col) == 0
-    return  # if there is no column df.period, leave df as is
+    return  # if there is no period_col column in the df, leave df as is
   end
   max_t = maximum(df[!, timestep_col])
   df[!, timestep_col] .= (df[!, period_col] .- 1) .* max_t .+ df[!, timestep_col]
