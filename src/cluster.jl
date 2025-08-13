@@ -227,13 +227,16 @@ function split_into_periods!(
 end
 
 """
-    validate_df_and_find_key_columns(df)
+  validate_df_and_find_key_columns(df; layout = DataFrameLayout())
 
-Checks that dataframe `df` contains the necessary columns and returns a list of
-columns that act as keys (i.e., unique data identifiers within different periods).
+Checks that dataframe `df` contains the necessary columns (as described by
+`layout`) and returns a list of columns that act as keys (i.e., unique data
+identifiers within different periods). Keys are all columns except
+`layout.period` and `layout.value`.
 
 # Examples
 
+Default column names:
 ```
 julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :a .=> "a", :value => 1:3])
 3×4 DataFrame
@@ -248,37 +251,55 @@ julia> TulipaClustering.validate_df_and_find_key_columns(df)
 2-element Vector{Symbol}:
  :timestep
  :a
+```
 
+Custom column names via a layout:
+```
+julia> layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+julia> df = DataFrame([:p => [1, 1, 2], :ts => [1, 2, 1], :a .=> "a", :val => 1:3])
+3×4 DataFrame
+ Row │ p      ts   a       val
+     │ Int64  Int64  String  Int64
+─────┼─────────────────────────────
+   1 │     1     1  a           1
+   2 │     1     2  a           2
+   3 │     2     1  a           3
+
+julia> TulipaClustering.validate_df_and_find_key_columns(df; layout)
+2-element Vector{Symbol}:
+ :ts
+ :a
+```
+
+Missing columns error references layout-provided names:
+```
 julia> df = DataFrame([:value => 1])
-1×1 DataFrame
- Row │ value
-     │ Int64
-─────┼───────
-   1 │     1
-
 julia> TulipaClustering.validate_df_and_find_key_columns(df)
-ERROR: DomainError with 1×1 DataFrame
- Row │ value
-     │ Int64
-─────┼───────
-   1 │     1:
-DataFrame must contain columns `timestep` and `value`
+ERROR: DomainError: DataFrame must contain columns `timestep` and `value`
 ```
 """
-function validate_df_and_find_key_columns(df::AbstractDataFrame)::Vector{Symbol}
+function validate_df_and_find_key_columns(
+  df::AbstractDataFrame;
+  layout::DataFrameLayout = DataFrameLayout(),
+)::Vector{Symbol}
   columns = propertynames(df)
-  if :timestep ∉ columns || :value ∉ columns
-    throw(DomainError(df, "DataFrame must contain columns `timestep` and `value`"))
-  end
-  if :period ∉ columns
+  if layout.timestep ∉ columns || layout.value ∉ columns
     throw(
       DomainError(
         df,
-        "DataFrame must contain column `period`; call split_into_periods! to split it into periods.",
+        "DataFrame must contain columns `$(layout.timestep)` and `$(layout.value)`",
       ),
     )
   end
-  non_key_columns = [:period, :value]
+  if layout.period ∉ columns
+    throw(
+      DomainError(
+        df,
+        "DataFrame must contain column `$(layout.period)`; call split_into_periods! to split it into periods.",
+      ),
+    )
+  end
+  non_key_columns = [layout.period, layout.value]
   key_columns = filter!(col -> col ∉ non_key_columns, columns)
   return key_columns
 end
