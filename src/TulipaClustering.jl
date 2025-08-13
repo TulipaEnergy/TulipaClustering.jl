@@ -13,11 +13,11 @@ using Statistics
 using TOML
 
 include("structures.jl")
+include("dataframe-layout.jl")
 include("data-validation.jl")
 include("io.jl")
 include("weight_fitting.jl")
 include("cluster.jl")
 include("convenience.jl")
-include("dataframe-layout.jl")
 
 end

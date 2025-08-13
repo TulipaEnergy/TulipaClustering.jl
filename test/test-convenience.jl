@@ -217,3 +217,35 @@ end
     dummy_cluster!(connection; database_schema)
   end
 end
+
+@testset "cluster! respects custom layout for in-memory processing" begin
+  period_duration = 24
+  num_periods = 5
+  num_timesteps = period_duration * num_periods
+  num_rps = 3
+  profile_names = ["name1", "name2"]
+
+  connection = _new_connection(; profile_names, num_timesteps)
+  layout = DataFrameLayout(; timestep = :ts, value = :val)
+
+  clusters = cluster!(
+    connection,
+    period_duration,
+    num_rps;
+    layout,
+    clustering_kwargs = Dict(:display => :iter),
+    weight_fitting_kwargs = Dict(:niters => 20, :learning_rate => 0.001),
+  )
+
+  # Verify DB outputs keep custom layout column names
+  df_profiles_rep_periods =
+    DuckDB.query(
+      connection,
+      "FROM profiles_rep_periods
+      ORDER BY profile_name, rep_period, ts",
+    ) |> DataFrame
+
+  @test sort(names(df_profiles_rep_periods)) == ["profile_name", "rep_period", "ts", "val"]
+  @test size(df_profiles_rep_periods, 1) ==
+        length(profile_names) * period_duration * num_rps
+end
