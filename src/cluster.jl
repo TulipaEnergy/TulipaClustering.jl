@@ -514,13 +514,15 @@ function matrix_and_keys_to_df(
 end
 
 """
-    append_period_from_source_df_as_rp!(df; source_df, period, rp, key_columns)
+  append_period_from_source_df_as_rp!(df; source_df, period, rp, key_columns, layout = DataFrameLayout())
 
 Extracts a period with index `period` from `source_df` and appends it as a
 representative period with index `rp` to `df`, using `key_columns` as keys.
+Respects custom column names via `layout`.
 
 # Examples
 
+Default layout:
 ```
 julia> source_df = DataFrame([:period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "b", :value => 5:8])
 4×4 DataFrame
@@ -554,6 +556,22 @@ julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df, perio
    5 │          3          1  b           7
    6 │          3          2  b           8
 ```
+
+Custom layout:
+```
+julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> src = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :a .=> "b", :val => 5:8])
+julia> df = DataFrame([:rep_period => [1,1], :ts => [1,2], :a .=> "a", :val => [1,2]])
+julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df = src, period = 2, rp = 3, key_columns = [:ts, :a], layout)
+4×4 DataFrame
+ Row │ rep_period  ts    a       val
+   │ Int64       Int64  String  Int64
+─────┼──────────────────────────────────
+   1 │          1     1  a           1
+   2 │          1     2  a           2
+   3 │          3     1  b           7
+   4 │          3     2  b           8
+```
 """
 function append_period_from_source_df_as_rp!(
   df::AbstractDataFrame;
@@ -561,10 +579,13 @@ function append_period_from_source_df_as_rp!(
   period::Int,
   rp::Int,
   key_columns::Vector{Symbol},
+  layout::DataFrameLayout = DataFrameLayout(),
 )
-  period_df = source_df[source_df.period .== period, :]
-  period_df.period .= rp
-  select!(period_df, :period => :rep_period, key_columns..., :value)
+  period_col = layout.period
+  value_col = layout.value
+  period_df = source_df[source_df[!, period_col] .== period, :]
+  period_df[!, period_col] .= rp
+  select!(period_df, period_col => :rep_period, key_columns..., value_col)
   append!(df, period_df)
 end
 
