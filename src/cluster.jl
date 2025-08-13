@@ -446,13 +446,14 @@ function df_to_matrix_and_keys(
 end
 
 """
-    matrix_and_keys_to_df(matrix, keys)
+  matrix_and_keys_to_df(matrix, keys; layout = DataFrameLayout())
 
-Converts a a matrix `matrix` to a dataframe, appending the key columns given by
-`keys`.
+Converts a matrix `matrix` to a long-format dataframe with columns
+`(:rep_period, layout.timestep, keys..., layout.value)`.
 
 # Examples
 
+Default layout:
 ```
 julia> m = [1.0 3.0; 2.0 4.0]
 2×2 Matrix{Float64}:
@@ -477,14 +478,37 @@ julia> TulipaClustering.matrix_and_keys_to_df(m, k)
    3 │          2          1  a           3.0
    4 │          2          2  a           4.0
 ```
+
+Custom layout:
+```
+julia> layout = DataFrameLayout(; timestep=:ts, value=:val)
+julia> k = DataFrame([:ts => 1:2, :a .=> "a"])
+julia> TulipaClustering.matrix_and_keys_to_df(m, k; layout)
+4×4 DataFrame
+ Row │ rep_period  ts    a       val
+   │ Int64       Int64  String  Float64
+─────┼────────────────────────────────────
+   1 │          1     1  a           1.0
+   2 │          1     2  a           2.0
+   3 │          2     1  a           3.0
+   4 │          2     2  a           4.0
+```
 """
-function matrix_and_keys_to_df(matrix::Matrix{Float64}, keys::AbstractDataFrame)
+function matrix_and_keys_to_df(
+  matrix::Matrix{Float64},
+  keys::AbstractDataFrame;
+  layout::DataFrameLayout = DataFrameLayout(),
+)
   n_columns = size(matrix, 2)
   result = DataFrame(matrix, string.(1:n_columns))
   result = hcat(keys, result)            # prepend the previously deleted columns
   result = stack(result; variable_name = :rep_period) |> dropmissing # convert from wide to long format
+  # Rename value column to match layout, if needed
+  if layout.value ≠ :value && hasproperty(result, :value)
+    rename!(result, :value => layout.value)
+  end
   result.rep_period = parse.(Int, result.rep_period)  # change the type of rep_period column to Int
-  select!(result, :rep_period, :timestep, :)         # move the rep_period column to the front
+  select!(result, :rep_period, layout.timestep, :)         # move the rep_period column to the front
 
   return result
 end
