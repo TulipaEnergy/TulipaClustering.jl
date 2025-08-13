@@ -110,16 +110,16 @@ function combine_periods!(df::AbstractDataFrame; layout = DataFrameLayout())
 end
 
 """
-    split_into_periods!(df; period_duration=nothing)
+    split_into_periods!(df; period_duration=nothing, layout=DataFrameLayout())
 
-Modifies a dataframe `df` by separating the column `timestep` into periods of
-length `period_duration`. The new data is written into two columns:
+Modifies a dataframe `df` by separating the time column into periods of length
+`period_duration`, respecting custom column names provided by `layout`.
 
-  - `period`: the period ID;
-  - `timestep`: the time step within the current period.
+The new data is written into two columns defined by the layout:
+  - `layout.period`: the period ID
+  - `layout.timestep`: the time step within the current period
 
-If `period_duration` is `nothing`, then all of the time steps are within the
-same period with index 1.
+If `period_duration` is `nothing`, then all time steps are in a single period (ID 1).
 
 # Examples
 
@@ -171,27 +171,59 @@ julia> TulipaClustering.split_into_periods!(df)
    2 │      1          2      2
    3 │      1          3      3
 ```
+
+Custom column names via a layout:
+```
+julia> layout = DataFrameLayout(; timestep = :time_step, period = :periods)
+julia> df = DataFrame([:time_step => 1:4, :value => 5:8])
+4×2 DataFrame
+ Row │ time_step  value
+    │ Int64      Int64
+─────┼──────────────────
+  1 │         1      5
+  2 │         2      6
+  3 │         3      7
+  4 │         4      8
+
+julia> TulipaClustering.split_into_periods!(df; period_duration=2, layout)
+4×3 DataFrame
+ Row │ periods  time_step  value
+    │ Int64    Int64      Int64
+─────┼───────────────────────────
+  1 │       1          1      5
+  2 │       1          2      6
+  3 │       2          1      7
+  4 │       2          2      8
+```
 """
 function split_into_periods!(
   df::AbstractDataFrame;
   period_duration::Union{Int, Nothing} = nothing,
+  layout = DataFrameLayout(),
 )
+  # Unpack layout
+  timestep_col = layout.timestep
+  period_col = layout.period
+
   # If the periods already exist, combine them into the time steps if necessary
-  combine_periods!(df)
+  combine_periods!(df; layout)
 
   if isnothing(period_duration)
     # If period_duration is nothing, then leave the time steps as is and
     # everything is just the same period with index 1.
-    insertcols!(df, :period => 1)
+    insertcols!(df, period_col => 1)
   else
     # Otherwise, split the time step index using 1-based modular arithmetic
-    indices = fldmod1.(df.timestep, period_duration)  # find the new indices
-    indices = reinterpret(reshape, Int, indices)       # change to an array for slicing
+    indices = fldmod1.(df[!, timestep_col], period_duration)  # find the new indices
+    indices = reinterpret(reshape, Int, indices)              # change to an array for slicing
 
-    df.period = indices[1, :]     # first row is the floor quotients, i.e., the period indices
-    df.timestep = indices[2, :]  # second row is the remainders, i.e., the new time steps
+    # first row is the floor quotients, i.e., the period indices
+    df[!, period_col] = indices[1, :]
+    # second row is the remainders, i.e., the new time steps
+    df[!, timestep_col] = indices[2, :]
   end
-  select!(df, :period, :timestep, :)  # move the time-related columns to the front
+  # move the time-related columns to the front
+  select!(df, period_col, timestep_col, :)
 end
 
 """
