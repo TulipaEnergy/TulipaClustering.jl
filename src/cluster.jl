@@ -679,36 +679,83 @@ end
 
 """
   find_representative_periods(
-    clustering_data;
-    n_rp = 10,
-    rescale_demand_data = true,
+    clustering_data,
+    n_rp;
     drop_incomplete_last_period = false,
     method = :k_means,
     distance = SqEuclidean(),
     initial_representatives = DataFrame(),
+    layout = DataFrameLayout(),
     args...,
   )
 
-Finds representative periods via data clustering.
+Finds representative periods via data clustering. Honors custom column names via
+`layout` (defaults to `(:period, :timestep, :value)`).
 
-  - `clustering_data`: the data to perform clustering on.
+Arguments
+  - `clustering_data`: long-format data to cluster.
   - `n_rp`: number of representative periods to find.
-  - `rescale_demand_data`: if `true`, demands are first divided by the maximum
-    demand value, so that they are between zero and one like the generation
-    availability data
   - `drop_incomplete_last_period`: controls how the last period is treated if it
     is not complete: if this parameter is set to `true`, the incomplete period
     is dropped and the weights are rescaled accordingly; otherwise, clustering
     is done for `n_rp - 1` periods, and the last period is added as a special
-    shorter representative period
-  - `method`: clustering method to use, either `:k_means` and `:k_medoids`
+    shorter representative period.
+  - `method`: clustering method to use `:k_means`, `:k_medoids`, `:convex_hull`, `:convex_hull_with_null`, or `:conical_hull`.
   - `distance`: semimetric used to measure distance between data points.
-  - `initial_representatives` initial representatives that should be
-    included in the clustering. The period column in the initial representatives
-    should be 1-indexed and the key columns should be the same as in the clustering data.
-    For the hull methods it will be added before clustering, for :k_means and :k_medoids
-    it will be added after clustering.
-  - other named arguments can be provided; they are passed to the clustering method.
+  - `initial_representatives`: dataframe of initial RPs. It must use the same key
+    columns and follow the same `layout` as `clustering_data`. For hull methods the
+    RPs are prepended before clustering; for `:k_means`/`:k_medoids` they are appended
+    after clustering.
+  - `layout`: `DataFrameLayout` describing the column names.
+  - other named arguments are forwarded to the clustering method.
+
+# Returns
+
+Returns a `ClusteringResult` with:
+  - `profiles::DataFrame`: Long-format representative profiles with columns
+    `:rep_period`, `layout.timestep`, all key columns (`auxiliary_data.key_columns`),
+    and `layout.value`.
+  - `weight_matrix::SparseMatrixCSC{Float64,Int}` (or dense `Matrix{Float64}`):
+    rows correspond to source periods and columns to representative periods; entry
+    `(p, r)` is the weight of period `p` assigned to representative `r`.
+    If the last period is incomplete and `drop_incomplete_last_period` is false,
+    it maps to its own representative column with its specific weight; if dropped,
+    it is excluded from the rows.
+  - `clustering_matrix::Matrix{Float64}`: The feature-by-period matrix used for
+    clustering (features are derived from `layout.timestep` crossed with key columns).
+  - `rp_matrix::Matrix{Float64}`: The representative profiles in matrix form
+    (same feature layout as `clustering_matrix`).
+  - `auxiliary_data::AuxiliaryClusteringData`: Auxiliary metadata such as
+    `key_columns`, `period_duration`, `last_period_duration`, `n_periods`, and
+    (for applicable methods) `medoids` indices.
+
+# Examples
+
+Finding two representatives using default values:
+```
+julia> df = DataFrame((
+           period = kron(1:4, ones(Int, 2)),
+           timestep = repeat(1:2, 4),
+           profile = repeat(["A"], 8),
+           value = 1:8,
+         ))
+
+julia> res = TulipaClustering.find_representative_periods(df, 2)
+```
+
+Finding two representatives using k-medoids and a custom layout:
+```
+julia> layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+
+julia> df = DataFrame((
+           p = kron(1:4, ones(Int, 2)),
+           ts = repeat(1:2, 4),
+           profile = repeat(["A"], 8),
+           val = 1:8,
+         ))
+
+julia> res = TulipaClustering.find_representative_periods(df, 2; method = :k_medoids, layout)
+```
 """
 function find_representative_periods(
   clustering_data::AbstractDataFrame,
@@ -717,6 +764,7 @@ function find_representative_periods(
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
   initial_representatives::AbstractDataFrame = DataFrame(),
+  layout::DataFrameLayout = DataFrameLayout(),
   args...,
 )
   # 1. Check that the number of RPs makes sense. The first check can be done immediately,
@@ -730,7 +778,7 @@ function find_representative_periods(
   end
 
   # Find auxiliary data and pre-compute additional constants that are used multiple times alter
-  aux = find_auxiliary_data(clustering_data)
+  aux = find_auxiliary_data(clustering_data; layout)
   n_periods = aux.n_periods
 
   if n_rp > n_periods
@@ -753,6 +801,7 @@ function find_representative_periods(
       aux,
       is_last_period_excluded,
       n_rp,
+      layout,
     )
     i_rp = maximum(initial_representatives.period) # number of provided representative periods
   else
@@ -780,34 +829,39 @@ function find_representative_periods(
 
   # 3. Build the clustering matrix
 
+  period_col = layout.period
   if method in [:k_means, :k_medoids] && !isempty(initial_representatives)
     # If clustering is k-means or k-medoids we remove amount of initial representatives from n_rp
     n_rp -= i_rp
     clustering_matrix, keys = df_to_matrix_and_keys(
-      clustering_data[clustering_data.period .≤ n_complete_periods, :],
-      aux.key_columns,
+      clustering_data[clustering_data[!, period_col] .≤ n_complete_periods, :],
+      aux.key_columns;
+      layout,
     )
 
   elseif method in [:convex_hull, :convex_hull_with_null, :conical_hull] &&
          !isempty(initial_representatives)
     # If clustering is one of the hull methods, we add initial representatives to the clustering matrix in front
     updated_clustering_data = deepcopy(clustering_data)
-    updated_clustering_data.period = updated_clustering_data.period .+ i_rp
+    updated_clustering_data[!, period_col] = updated_clustering_data[!, period_col] .+ i_rp
     clustering_data = vcat(initial_representatives, updated_clustering_data)
 
     clustering_matrix, keys = df_to_matrix_and_keys(
       clustering_data[
-        clustering_data.period .≤ (n_complete_periods + maximum(
-          initial_representatives.period,
-        )),
+        clustering_data[
+          !,
+          period_col,
+        ] .≤ (n_complete_periods + maximum(initial_representatives[!, period_col])),
         :,
       ],
-      aux.key_columns,
+      aux.key_columns;
+      layout,
     )
   else
     clustering_matrix, keys = df_to_matrix_and_keys(
-      clustering_data[clustering_data.period .≤ n_complete_periods, :],
-      aux.key_columns,
+      clustering_data[clustering_data[!, period_col] .≤ n_complete_periods, :],
+      aux.key_columns;
+      layout,
     )
   end
 
@@ -942,22 +996,26 @@ function find_representative_periods(
   rp_df = if rp_matrix ≡ nothing
     nothing
   else
-    matrix_and_keys_to_df(rp_matrix, keys)
+    matrix_and_keys_to_df(rp_matrix, keys; layout)
   end
 
   # In case of initial representatives and a non hull method, we add them now
   if !isempty(initial_representatives) && method in [:k_means, :k_medoids]
-    representatives_to_add =
-      select!(initial_representatives, :period => :rep_period, aux.key_columns..., :value)
+    representatives_to_add = select!(
+      initial_representatives,
+      period_col => :rep_period,
+      aux.key_columns...,
+      layout.value,
+    )
     representatives_to_add.rep_period .= representatives_to_add.rep_period .+ n_rp
     rp_df = if rp_df === nothing
       representatives_to_add
     else
       vcat(rp_df, representatives_to_add)
     end
-    rename!(rp_df, :rep_period => :period)
-    rp_matrix, keys = df_to_matrix_and_keys(rp_df, aux.key_columns)
-    rename!(rp_df, :period => :rep_period)
+    rename!(rp_df, :rep_period => period_col)
+    rp_matrix, keys = df_to_matrix_and_keys(rp_df, aux.key_columns; layout)
+    rename!(rp_df, period_col => :rep_period)
     rp_matrix
     n_rp += i_rp
   end
@@ -981,6 +1039,7 @@ function find_representative_periods(
       period = n_periods,
       rp = n_rp,
       key_columns = aux.key_columns,
+      layout = layout,
     )
     if method ≡ :k_medoids
       append!(aux.medoids, n_complete_periods + 1)
