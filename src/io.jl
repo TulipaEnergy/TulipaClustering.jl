@@ -18,15 +18,21 @@ function weight_matrix_to_df(
 end
 
 """
-    write_clustering_result_to_table(connection, clustering_result)
+    write_clustering_result_to_tables(connection, clustering_result; database_schema="", layout=DataFrameLayout())
 
-Writes a [`TulipaClustering.ClusteringResult`](@ref) to CSV files in the
-`output_folder`.
+Writes a [`TulipaClustering.ClusteringResult`](@ref) into DuckDB tables in `connection`.
+
+Notes
+- The `profiles_rep_periods` table is standardized to the default output schema regardless of the
+  layout used during in-memory processing: columns are `profile_name`, `rep_period`, `timestep`, and `value`.
+- Pass `layout` if the in-memory profiles DataFrame uses custom names for `timestep` and `value` so they can be
+  renamed to the default output schema.
 """
 function write_clustering_result_to_tables(
   connection,
   clustering_result::TulipaClustering.ClusteringResult;
   database_schema = "",
+  layout::DataFrameLayout = DataFrameLayout(),
 )
   mapping_df = weight_matrix_to_df(clustering_result.weight_matrix)
 
@@ -40,11 +46,15 @@ function write_clustering_result_to_tables(
     prefix = "$database_schema."
   end
 
-  DuckDB.register_data_frame(
-    connection,
-    clustering_result.profiles,
-    "t_profiles_rep_periods",
-  )
+  # Standardize profiles columns to default output schema irrespective of in-memory layout
+  df_profiles = copy(clustering_result.profiles)
+  if layout.timestep != :timestep && hasproperty(df_profiles, layout.timestep)
+    rename!(df_profiles, layout.timestep => :timestep)
+  end
+  if layout.value != :value && hasproperty(df_profiles, layout.value)
+    rename!(df_profiles, layout.value => :value)
+  end
+  DuckDB.register_data_frame(connection, df_profiles, "t_profiles_rep_periods")
   DuckDB.register_data_frame(connection, mapping_df, "t_rep_periods_mapping")
 
   aux = clustering_result.auxiliary_data
