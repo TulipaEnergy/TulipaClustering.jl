@@ -431,6 +431,60 @@ end
 end
 
 @testset "Validating initial representatives" begin
+  @testset "Custom layout: DataFrame without periods passed for initial representatives" begin
+    layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+    initial_representatives = DataFrame([:ts => 1:2, :val => 1:2])
+    @test_throws DomainError(
+      initial_representatives,
+      "DataFrame must contain column `p`; call split_into_periods! to split it into periods.",
+    ) begin
+      clustering_data = DataFrame([
+        :p => repeat(1:2; inner = 4),
+        :ts => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :val => 5:12,
+      ])
+      aux_clustering = find_auxiliary_data(clustering_data; layout)
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        false,
+        1,
+        layout,
+      )
+    end
+  end
+
+  @testset "Custom layout: Dataframe with different key columns passed for initial representatives" begin
+    @test_throws ArgumentError(
+      "Key columns of initial represenatives do not match clustering data\nExpected was: [:ts, :technology] \nFound was: [:ts, :demand]",
+    ) begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      clustering_data = DataFrame([
+        :p => repeat(1:2; inner = 4),
+        :ts => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :val => 5:12,
+      ])
+      aux_clustering = find_auxiliary_data(clustering_data; layout)
+      initial_representatives = DataFrame([
+        :p => repeat(1:2; inner = 4),
+        :ts => repeat(1:2; inner = 2, outer = 2),
+        :demand => repeat(["Solar", "Nuclear"], 4),
+        :val => 5:12,
+      ])
+      validate_initial_representatives(
+        initial_representatives,
+        clustering_data,
+        aux_clustering,
+        false,
+        1,
+        layout,
+      )
+    end
+  end
+
   @testset "DataFrame without periods passed for initial representatives" begin
     initial_representatives = DataFrame([:timestep => 1:2, :value => 1:2])
     @test_throws DomainError(
