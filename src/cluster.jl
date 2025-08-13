@@ -990,16 +990,54 @@ function find_representative_periods(
   return ClusteringResult(rp_df, weight_matrix, clustering_matrix, rp_matrix, aux)
 end
 
+"""
+    validate_initial_representatives(
+      initial_representatives,
+      clustering_data,
+      aux_clustering,
+      last_period_excluded,
+      n_rp;
+      layout = DataFrameLayout()
+    )
+
+Validates that `initial_representatives` is compatible with `clustering_data` for
+use in `find_representative_periods`, considering custom column names via `layout`.
+Checks include:
+  1. Key columns match between initial representatives and clustering data.
+  2. Initial representatives do not contain an incomplete last period.
+  3. Both dataframes have the same set of keys (no extra/missing keys).
+  4. The number of periods in `initial_representatives` does not exceed `n_rp`
+     (adjusted for `last_period_excluded`).
+
+# Examples
+
+```
+julia> df = DataFrame([:period => [1,1,2,2], :timestep => [1,2,1,2], :zone .=> "A", :value => 10:13])
+julia> aux = TulipaClustering.find_auxiliary_data(df)
+julia> init = DataFrame([:period => [1,1], :timestep => [1,2], :zone .=> "A", :value => [10, 11]])
+julia> TulipaClustering.validate_initial_representatives(init, df, aux, false, 2)
+```
+
+Custom layout:
+```
+julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :zone .=> "A", :val => 10:13])
+julia> aux2 = TulipaClustering.find_auxiliary_data(df2; layout)
+julia> init2 = DataFrame([:p => [1,1], :ts => [1,2], :zone .=> "A", :val => [10, 11]])
+julia> TulipaClustering.validate_initial_representatives(init2, df2, aux2, false, 2; layout)
+```
+"""
 function validate_initial_representatives(
   initial_representatives::AbstractDataFrame,
   clustering_data::AbstractDataFrame,
   aux_clustering::AuxiliaryClusteringData,
   last_period_excluded::Bool,
   n_rp::Int,
+  layout::DataFrameLayout = DataFrameLayout(),
 )
 
   # Calling find_auxiliary_data on the initial representatives already checks whether the dataframes satisfies some of the base requirements (:period, :value, :timestep)
-  aux_initial = find_auxiliary_data(initial_representatives)
+  aux_initial = find_auxiliary_data(initial_representatives; layout)
 
   # 1. Check that the column names for initial representatives are the same as for clustering data
   if aux_clustering.key_columns ≠ aux_initial.key_columns
