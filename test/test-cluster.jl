@@ -118,6 +118,16 @@ end
     end
   end
 
+  @testset "Make sure validation works with custom layout and finds key columns" begin
+    @test begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([:p => [1, 1, 2], :ts => [1, 2, 1], :a .=> "a", :val => 1:3])
+      keys = TulipaClustering.validate_df_and_find_key_columns(df; layout)
+
+      keys == [:ts, :a]
+    end
+  end
+
   @testset "Make sure that the validation fails when `timestep` column is absent" begin
     @test_throws DomainError begin
       df = DataFrame([:value => 1])
@@ -136,6 +146,26 @@ end
     @test_throws DomainError begin
       df = DataFrame([:timestep => 1, :value => 1])
       keys = TulipaClustering.validate_df_and_find_key_columns(df)
+    end
+  end
+
+  @testset "Make sure that the validation fails with custom layout when columns are absent" begin
+    @test_throws DomainError begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([:val => 1]) # missing :ts and :p
+      TulipaClustering.validate_df_and_find_key_columns(df; layout)
+    end
+
+    @test_throws DomainError begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([:p => 1, :ts => 1]) # missing :val
+      TulipaClustering.validate_df_and_find_key_columns(df; layout)
+    end
+
+    @test_throws DomainError begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([:ts => 1, :val => 1]) # missing :p
+      TulipaClustering.validate_df_and_find_key_columns(df; layout)
     end
   end
 end
