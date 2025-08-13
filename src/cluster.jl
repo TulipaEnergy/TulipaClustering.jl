@@ -381,14 +381,16 @@ function find_period_weights(
 end
 
 """
-    df_to_matrix_and_keys(df, key_columns)
+  df_to_matrix_and_keys(df, key_columns; layout = DataFrameLayout())
 
-Converts a dataframe `df` (in a long format) to a matrix, ignoring the columns
-specified as `key_columns`. The key columns are converted from long to wide
-format and returned alongside the matrix.
+Converts a long-format dataframe `df` to a matrix, using the value/period
+columns from `layout`. Columns listed in `key_columns` are kept as keys.
+
+Returns `(matrix::Matrix{Float64}, keys::DataFrame)`.
 
 # Examples
 
+Default layout:
 ```
 julia> df = DataFrame([:period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
 4×4 DataFrame
@@ -413,9 +415,31 @@ julia> k
    1 │         1  a
    2 │         2  a
 ```
+
+Custom layout:
+```
+julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> df = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :a .=> "a", :val => 1:4])
+julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:ts, :a]; layout); m
+2×2 Matrix{Float64}:
+ 1.0  3.0
+ 2.0  4.0
+
+julia> k
+2×2 DataFrame
+ Row │ ts    a
+     │ Int64  String
+─────┼────────────────
+   1 │    1  a
+   2 │    2  a
+```
 """
-function df_to_matrix_and_keys(df::AbstractDataFrame, key_columns::Vector{Symbol})
-  wide_df = unstack(df, key_columns, :period, :value)
+function df_to_matrix_and_keys(
+  df::AbstractDataFrame,
+  key_columns::Vector{Symbol};
+  layout::DataFrameLayout = DataFrameLayout(),
+)
+  wide_df = unstack(df, key_columns, layout.period, layout.value)
   matrix = select(wide_df, Not(key_columns)) |> dropmissing |> Matrix{Float64}
   keys = select(wide_df, key_columns)
   return matrix, keys
