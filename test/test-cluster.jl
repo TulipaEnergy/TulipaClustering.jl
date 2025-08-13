@@ -37,6 +37,65 @@
   end
 end
 
+@testset "Auxiliary data" begin
+  @testset "Default layout computes durations and keys" begin
+    @test begin
+      df = DataFrame([
+        :period => [1, 1, 2, 2, 3],
+        :timestep => [1, 2, 1, 2, 1],
+        :a .=> "x",
+        :value => 10:14,
+      ])
+      aux = find_auxiliary_data(df)
+      (
+        aux.key_columns == [:timestep, :a] &&
+        aux.period_duration == 2 &&
+        aux.last_period_duration == 1 &&
+        aux.n_periods == 3
+      )
+    end
+  end
+
+  @testset "Custom layout computes durations and keys" begin
+    @test begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([
+        :p => [1, 1, 2, 2, 3],
+        :ts => [1, 2, 1, 2, 1],
+        :a .=> "x",
+        :val => 10:14,
+      ])
+      aux = find_auxiliary_data(df; layout)
+      (
+        aux.key_columns == [:ts, :a] &&
+        aux.period_duration == 2 &&
+        aux.last_period_duration == 1 &&
+        aux.n_periods == 3
+      )
+    end
+  end
+
+  @testset "Missing columns errors respect layout" begin
+    @test_throws DomainError begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([:val => 1]) # missing :ts and :p
+      find_auxiliary_data(df; layout)
+    end
+
+    @test_throws DomainError begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([:p => 1, :ts => 1]) # missing :val
+      find_auxiliary_data(df; layout)
+    end
+
+    @test_throws DomainError begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      df = DataFrame([:ts => 1, :val => 1]) # missing :p
+      find_auxiliary_data(df; layout)
+    end
+  end
+end
+
 @testset "Period splitting" begin
   @testset "Make sure that splitting perids works as expected" begin
     @test begin
