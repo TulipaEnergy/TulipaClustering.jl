@@ -50,6 +50,22 @@ end
     end
   end
 
+  @testset "Make sure that splitting periods works with custom layout" begin
+    @test begin
+      df = DataFrame([:time_step => 1:3, :value => 1:3])
+      TulipaClustering.split_into_periods!(
+        df;
+        period_duration = 2,
+        layout = DataFrameLayout(; timestep = :time_step, period = :periods),
+      )
+
+      size(df) == (3, 3) &&
+        df.periods == [1, 1, 2] &&
+        df.time_step == [1, 2, 1] &&
+        df.value == collect(1:3)
+    end
+  end
+
   @testset "Make sure that there is only one period when period_duration is not provided" begin
     @test begin
       df = DataFrame([:timestep => 1:3, :value => 1:3])
@@ -58,6 +74,21 @@ end
       size(df) == (3, 3) &&
         df.period == [1, 1, 1] &&
         df.timestep == [1, 2, 3] &&
+        df.value == collect(1:3)
+    end
+  end
+
+  @testset "Make sure that one period is created when duration not provided with custom layout" begin
+    @test begin
+      df = DataFrame([:time_step => 1:3, :value => 1:3])
+      TulipaClustering.split_into_periods!(
+        df;
+        layout = DataFrameLayout(; timestep = :time_step, period = :periods),
+      )
+
+      size(df) == (3, 3) &&
+        df.periods == [1, 1, 1] &&
+        df.time_step == [1, 2, 3] &&
         df.value == collect(1:3)
     end
   end
