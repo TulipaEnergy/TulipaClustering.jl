@@ -277,6 +277,26 @@ end
       clustering_result.weight_matrix == [1.25 0.0; 0.0 1.25]
     end
   end
+
+  @testset "K-means works with custom layout" begin
+    @test begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      clustering_data = DataFrame([
+        :p => repeat(1:2; inner = 4),
+        :ts => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :val => 5:12,
+      ])
+      result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :k_means,
+        init = :kmcen,
+        layout,
+      )
+      result.weight_matrix == [1.0 0.0; 0.0 1.0]
+    end
+  end
 end
 
 @testset "K-medoids clustering" begin
@@ -327,6 +347,26 @@ end
       clustering_result.weight_matrix == [1.25 0.0; 0.0 1.25]
     end
   end
+
+  @testset "K-medoids works with custom layout" begin
+    @test begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      clustering_data = DataFrame([
+        :p => repeat(1:2; inner = 4),
+        :ts => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :val => 5:12,
+      ])
+      result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :k_medoids,
+        init = :kmcen,
+        layout,
+      )
+      result.weight_matrix == [1.0 0.0; 0.0 1.0]
+    end
+  end
 end
 
 @testset "Convex hull clustering" begin
@@ -343,6 +383,21 @@ end
       clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
     end
   end
+
+  @testset "Convex hull works with custom layout" begin
+    @test begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      clustering_data = DataFrame([
+        :p => repeat(1:2; inner = 4),
+        :ts => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :val => 5:12,
+      ])
+      result =
+        find_representative_periods(clustering_data, 2; method = :convex_hull, layout)
+      result.weight_matrix == [1.0 0.0; 0.0 1.0]
+    end
+  end
 end
 
 @testset "Convex hull with null clustering" begin
@@ -356,6 +411,20 @@ end
         method = :convex_hull_with_null,
       )
       clustering_result.profiles[!, :value] == [1.0]
+    end
+  end
+
+  @testset "Convex hull with null works with custom layout" begin
+    @test begin
+      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      clustering_data = DataFrame(; p = [1, 2], val = [1.0, 0.5], ts = [1, 1])
+      result = find_representative_periods(
+        clustering_data,
+        1;
+        method = :convex_hull_with_null,
+        layout,
+      )
+      result.profiles[!, :val] == [1.0]
     end
   end
 end
