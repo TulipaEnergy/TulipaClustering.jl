@@ -173,3 +173,34 @@ nice_query("FROM profiles_rep_periods LIMIT 5")
 ```@example duckdb_example
 nice_query("FROM timeframe_data LIMIT 5")
 ```
+
+### Using a custom layout
+
+You can customize the in-memory (and output) column names used for the time step and value
+columns by passing a `DataFrameLayout` to [`cluster!`](@ref). The input SQL table must still
+use the standard column names (`profile_name`, `timestep`, `value`). The layout only affects
+the in-memory DataFrames and the resulting `profiles_rep_periods` output table. Other output
+tables are layout-agnostic.
+
+Below we cluster again but ask the output table to use `ts` and `val` instead of the defaults
+`timestep` and `value`:
+
+```@example duckdb_example
+for table_name in (
+    "rep_periods_data",
+    "rep_periods_mapping",
+    "profiles_rep_periods",
+    "timeframe_data",
+)
+    DuckDB.query(connection, "DROP TABLE IF EXISTS $table_name")
+end
+
+layout = TulipaClustering.DataFrameLayout(; timestep = :ts, value = :val)
+clusters_custom = cluster!(connection, period_duration, num_rps; layout)
+
+nice_query("FROM profiles_rep_periods LIMIT 5")
+```
+
+Notice the columns `ts` and `val` in the output above (instead of `timestep` / `value`).
+
+If you prefer to always export the default column names, omit the `layout` argument.
