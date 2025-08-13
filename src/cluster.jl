@@ -305,21 +305,41 @@ function validate_df_and_find_key_columns(
 end
 
 """
-    find_auxiliary_data(clustering_data)
+    find_auxiliary_data(clustering_data; layout = DataFrameLayout())
 
-Calculates auxiliary data associated with the `clustering_data`. These include:
+Calculates auxiliary data associated with `clustering_data`, considering custom
+column names via `layout`.
 
-  - `key_columns`: key columns in the clustering_data dataframe
-  - `period_duration`: duration of time periods (in time steps)
+Returns `AuxiliaryClusteringData` with:
+  - `key_columns`: key columns in the dataframe
+  - `period_duration`: nominal duration of periods (max timestep across data)
   - `last_period_duration`: duration of the last period
   - `n_periods`: total number of periods
+
+# Example
+
+```
+julia> df = DataFrame([:period => [1,1,2,2], :timestep => [1,2,1,2], :a .=> "x", :value => 10:13])
+julia> aux = TulipaClustering.find_auxiliary_data(df)
+AuxiliaryClusteringData([:timestep, :a], 2, 2, 2, nothing)
+
+julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,1], :a .=> "x", :val => 10:13])
+julia> TulipaClustering.find_auxiliary_data(df2; layout)
+AuxiliaryClusteringData([:ts, :a], 2, 1, 2, nothing)
+```
 """
-function find_auxiliary_data(clustering_data::AbstractDataFrame)
-  key_columns = validate_df_and_find_key_columns(clustering_data)
-  n_periods = maximum(clustering_data.period)
-  period_duration = maximum(clustering_data.timestep)
+function find_auxiliary_data(
+  clustering_data::AbstractDataFrame;
+  layout::DataFrameLayout = DataFrameLayout(),
+)
+  key_columns = validate_df_and_find_key_columns(clustering_data; layout)
+  period_col = layout.period
+  timestep_col = layout.timestep
+  n_periods = maximum(clustering_data[!, period_col])
+  period_duration = maximum(clustering_data[!, timestep_col])
   last_period_duration =
-    maximum(clustering_data[clustering_data.period .== n_periods, :timestep])
+    maximum(clustering_data[clustering_data[!, period_col] .== n_periods, timestep_col])
   medoids = nothing
 
   return AuxiliaryClusteringData(
