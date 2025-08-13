@@ -22,11 +22,11 @@ end
 
 Writes a [`TulipaClustering.ClusteringResult`](@ref) into DuckDB tables in `connection`.
 
-Notes
-- The `profiles_rep_periods` table is standardized to the default output schema regardless of the
-  layout used during in-memory processing: columns are `profile_name`, `rep_period`, `timestep`, and `value`.
-- Pass `layout` if the in-memory profiles DataFrame uses custom names for `timestep` and `value` so they can be
-  renamed to the default output schema.
+Column naming:
+- The `profiles_rep_periods` table preserves the column names provided by `layout` for the time and value axes.
+  Resulting columns are: `profile_name`, `rep_period`, `<layout.timestep>`, `<layout.value>`.
+- Other tables (`rep_periods_data`, `rep_periods_mapping`, `timeframe_data`) are layout-agnostic and keep their
+  original schema.
 """
 function write_clustering_result_to_tables(
   connection,
@@ -46,15 +46,12 @@ function write_clustering_result_to_tables(
     prefix = "$database_schema."
   end
 
-  # Standardize profiles columns to default output schema irrespective of in-memory layout
-  df_profiles = copy(clustering_result.profiles)
-  if layout.timestep != :timestep && hasproperty(df_profiles, layout.timestep)
-    rename!(df_profiles, layout.timestep => :timestep)
-  end
-  if layout.value != :value && hasproperty(df_profiles, layout.value)
-    rename!(df_profiles, layout.value => :value)
-  end
-  DuckDB.register_data_frame(connection, df_profiles, "t_profiles_rep_periods")
+  # Preserve layout-specific column names directly
+  DuckDB.register_data_frame(
+    connection,
+    clustering_result.profiles,
+    "t_profiles_rep_periods",
+  )
   DuckDB.register_data_frame(connection, mapping_df, "t_rep_periods_mapping")
 
   aux = clustering_result.auxiliary_data
