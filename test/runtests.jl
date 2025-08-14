@@ -7,6 +7,7 @@ using SparseArrays
 using Test
 using TulipaClustering
 using TulipaIO
+using TOML
 
 # Folders names
 const INPUT_FOLDER = joinpath(@__DIR__, "inputs")

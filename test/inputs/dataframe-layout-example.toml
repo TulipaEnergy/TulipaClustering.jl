@@ -1,0 +1,3 @@
+value = "energy"
+timestep = "time_index"
+period = "scenario_period"
