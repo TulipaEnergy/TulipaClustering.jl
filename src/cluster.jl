@@ -733,12 +733,12 @@ Returns a `ClusteringResult` with:
 
 Finding two representatives using default values:
 ```
-julia> df = DataFrame((
+julia> df = DataFrame(
            period = kron(1:4, ones(Int, 2)),
            timestep = repeat(1:2, 4),
-           profile = repeat(["A"], 8),
+           profile = "A",
            value = 1:8,
-         ))
+         )
 
 julia> res = TulipaClustering.find_representative_periods(df, 2)
 ```
