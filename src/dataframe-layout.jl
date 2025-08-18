@@ -26,7 +26,7 @@ end
 
 function _read_model_parameters(path)
   if length(path) == 0
-    throw(ArgumentError("Argument cannot be an empty string")
+    throw(ArgumentError("Argument cannot be an empty string"))
   elseif !isfile(path)
     throw(ArgumentError("Path '$path' does not contain a file"))
   end
