@@ -2,7 +2,7 @@ export find_representative_periods,
   split_into_periods!, find_auxiliary_data, validate_initial_representatives
 
 """
-    combine_periods!(df; layout = DataFrameLayout())
+    combine_periods!(df; layout = ProfilesTableLayout())
 
 Combine per-period time steps into a single global `timestep` column in-place.
 
@@ -21,7 +21,7 @@ Period length inference:
 
 Arguments:
   * `df::AbstractDataFrame` (mutated): Source data in long format.
-  * `layout::DataFrameLayout`: Describes the column names for `period` and
+  * `layout::ProfilesTableLayout`: Describes the column names for `period` and
     `timestep` (defaults to standard names). Pass a custom layout if your
     dataframe uses different symbols.
 
@@ -57,7 +57,7 @@ julia> TulipaClustering.combine_periods!(df)
 
 Custom column names via a layout:
 ```
-julia> layout = DataFrameLayout(; period = :p, timestep = :ts)
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts)
 julia> df = DataFrame([:p => [1,1,2], :ts => [1,2,1], :value => 10:12])
 3×3 DataFrame
  Row │ p      ts   value
@@ -90,7 +90,7 @@ julia> TulipaClustering.combine_periods!(df)
    3 │         3      6
 ```
 """
-function combine_periods!(df::AbstractDataFrame; layout = DataFrameLayout())
+function combine_periods!(df::AbstractDataFrame; layout = ProfilesTableLayout())
   # Unpack layout
   timestep_col = layout.timestep
   period_col = layout.period
@@ -108,7 +108,7 @@ function combine_periods!(df::AbstractDataFrame; layout = DataFrameLayout())
 end
 
 """
-    split_into_periods!(df; period_duration=nothing, layout=DataFrameLayout())
+    split_into_periods!(df; period_duration=nothing, layout=ProfilesTableLayout())
 
 Modifies a dataframe `df` by separating the time column into periods of length
 `period_duration`, respecting custom column names provided by `layout`.
@@ -172,7 +172,7 @@ julia> TulipaClustering.split_into_periods!(df)
 
 Custom column names via a layout:
 ```
-julia> layout = DataFrameLayout(; timestep = :time_step, period = :periods)
+julia> layout = ProfilesTableLayout(; timestep = :time_step, period = :periods)
 julia> df = DataFrame([:time_step => 1:4, :value => 5:8])
 4×2 DataFrame
  Row │ time_step  value
@@ -197,7 +197,7 @@ julia> TulipaClustering.split_into_periods!(df; period_duration=2, layout)
 function split_into_periods!(
   df::AbstractDataFrame;
   period_duration::Union{Int, Nothing} = nothing,
-  layout = DataFrameLayout(),
+  layout = ProfilesTableLayout(),
 )
   # Unpack layout
   timestep_col = layout.timestep
@@ -225,7 +225,7 @@ function split_into_periods!(
 end
 
 """
-  validate_df_and_find_key_columns(df; layout = DataFrameLayout())
+  validate_df_and_find_key_columns(df; layout = ProfilesTableLayout())
 
 Checks that dataframe `df` contains the necessary columns (as described by
 `layout`) and returns a list of columns that act as keys (i.e., unique data
@@ -253,7 +253,7 @@ julia> TulipaClustering.validate_df_and_find_key_columns(df)
 
 Custom column names via a layout:
 ```
-julia> layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
 julia> df = DataFrame(p = [1, 1, 2], ts = [1, 2, 1], a = "a", val = 1:3)
 3×4 DataFrame
  Row │ p      ts   a       val
@@ -278,7 +278,7 @@ ERROR: DomainError: DataFrame must contain columns `timestep` and `value`
 """
 function validate_df_and_find_key_columns(
   df::AbstractDataFrame;
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )::Vector{Symbol}
   columns = propertynames(df)
   if layout.timestep ∉ columns || layout.value ∉ columns
@@ -303,7 +303,7 @@ function validate_df_and_find_key_columns(
 end
 
 """
-    find_auxiliary_data(clustering_data; layout = DataFrameLayout())
+    find_auxiliary_data(clustering_data; layout = ProfilesTableLayout())
 
 Calculates auxiliary data associated with `clustering_data`, considering custom
 column names via `layout`.
@@ -321,7 +321,7 @@ julia> df = DataFrame([:period => [1,1,2,2], :timestep => [1,2,1,2], :a => "x", 
 julia> aux = TulipaClustering.find_auxiliary_data(df)
 AuxiliaryClusteringData([:timestep, :a], 2, 2, 2, nothing)
 
-julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
 julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,1], :a => "x", :val => 10:13])
 julia> TulipaClustering.find_auxiliary_data(df2; layout)
 AuxiliaryClusteringData([:ts, :a], 2, 1, 2, nothing)
@@ -329,7 +329,7 @@ AuxiliaryClusteringData([:ts, :a], 2, 1, 2, nothing)
 """
 function find_auxiliary_data(
   clustering_data::AbstractDataFrame;
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
   key_columns = validate_df_and_find_key_columns(clustering_data; layout)
   period_col = layout.period
@@ -379,7 +379,7 @@ function find_period_weights(
 end
 
 """
-  df_to_matrix_and_keys(df, key_columns; layout = DataFrameLayout())
+  df_to_matrix_and_keys(df, key_columns; layout = ProfilesTableLayout())
 
 Converts a long-format dataframe `df` to a matrix, using the value/period
 columns from `layout`. Columns listed in `key_columns` are kept as keys.
@@ -416,7 +416,7 @@ julia> k
 
 Custom layout:
 ```
-julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
 julia> df = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :a .=> "a", :val => 1:4])
 julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:ts, :a]; layout); m
 2×2 Matrix{Float64}:
@@ -435,7 +435,7 @@ julia> k
 function df_to_matrix_and_keys(
   df::AbstractDataFrame,
   key_columns::Vector{Symbol};
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
   wide_df = unstack(df, key_columns, layout.period, layout.value)
   matrix = select(wide_df, Not(key_columns)) |> dropmissing |> Matrix{Float64}
@@ -444,7 +444,7 @@ function df_to_matrix_and_keys(
 end
 
 """
-    matrix_and_keys_to_df(matrix, keys; layout = DataFrameLayout())
+    matrix_and_keys_to_df(matrix, keys; layout = ProfilesTableLayout())
 
 Converts a matrix `matrix` to a long-format dataframe with columns
 `(:rep_period, layout.timestep, keys..., layout.value)`.
@@ -479,7 +479,7 @@ julia> TulipaClustering.matrix_and_keys_to_df(m, k)
 
 Custom layout:
 ```
-julia> layout = DataFrameLayout(; timestep=:ts, value=:val)
+julia> layout = ProfilesTableLayout(; timestep=:ts, value=:val)
 julia> k = DataFrame([:ts => 1:2, :a .=> "a"])
 julia> TulipaClustering.matrix_and_keys_to_df(m, k; layout)
 4×4 DataFrame
@@ -495,7 +495,7 @@ julia> TulipaClustering.matrix_and_keys_to_df(m, k; layout)
 function matrix_and_keys_to_df(
   matrix::Matrix{Float64},
   keys::AbstractDataFrame;
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
   n_columns = size(matrix, 2)
   result = DataFrame(matrix, string.(1:n_columns))
@@ -512,7 +512,7 @@ function matrix_and_keys_to_df(
 end
 
 """
-  append_period_from_source_df_as_rp!(df; source_df, period, rp, key_columns, layout = DataFrameLayout())
+  append_period_from_source_df_as_rp!(df; source_df, period, rp, key_columns, layout = ProfilesTableLayout())
 
 Extracts a period with index `period` from `source_df` and appends it as a
 representative period with index `rp` to `df`, using `key_columns` as keys.
@@ -557,7 +557,7 @@ julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df, perio
 
 Custom layout:
 ```
-julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
 julia> src = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :a .=> "b", :val => 5:8])
 julia> df = DataFrame([:rep_period => [1,1], :ts => [1,2], :a .=> "a", :val => [1,2]])
 julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df = src, period = 2, rp = 3, key_columns = [:ts, :a], layout)
@@ -577,7 +577,7 @@ function append_period_from_source_df_as_rp!(
   period::Int,
   rp::Int,
   key_columns::Vector{Symbol},
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
   period_col = layout.period
   value_col = layout.value
@@ -683,7 +683,7 @@ end
     method = :k_means,
     distance = SqEuclidean(),
     initial_representatives = DataFrame(),
-    layout = DataFrameLayout(),
+    layout = ProfilesTableLayout(),
     args...,
   )
 
@@ -704,7 +704,7 @@ Arguments
     columns and follow the same `layout` as `clustering_data`. For hull methods the
     RPs are prepended before clustering; for `:k_means`/`:k_medoids` they are appended
     after clustering.
-  - `layout`: `DataFrameLayout` describing the column names.
+  - `layout`: `ProfilesTableLayout` describing the column names.
   - other named arguments are forwarded to the clustering method.
 
 # Returns
@@ -743,7 +743,7 @@ julia> res = TulipaClustering.find_representative_periods(df, 2)
 
 Finding two representatives using k-medoids and a custom layout:
 ```
-julia> layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
 
 julia> df = DataFrame(
            p = kron(1:4, ones(Int, 2)),
@@ -762,7 +762,7 @@ function find_representative_periods(
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
   initial_representatives::AbstractDataFrame = DataFrame(),
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
   args...,
 )
   # 1. Check that the number of RPs makes sense. The first check can be done immediately,
@@ -1054,7 +1054,7 @@ end
       aux_clustering,
       last_period_excluded,
       n_rp;
-      layout = DataFrameLayout()
+      layout = ProfilesTableLayout()
     )
 
 Validates that `initial_representatives` is compatible with `clustering_data` for
@@ -1077,7 +1077,7 @@ julia> TulipaClustering.validate_initial_representatives(init, df, aux, false, 2
 
 Custom layout:
 ```
-julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
+julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
 julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :zone .=> "A", :val => 10:13])
 julia> aux2 = TulipaClustering.find_auxiliary_data(df2; layout)
 julia> init2 = DataFrame([:p => [1,1], :ts => [1,2], :zone .=> "A", :val => [10, 11]])
@@ -1090,7 +1090,7 @@ function validate_initial_representatives(
   aux_clustering::AuxiliaryClusteringData,
   last_period_excluded::Bool,
   n_rp::Int,
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
 
   # Calling find_auxiliary_data on the initial representatives already checks whether the dataframes satisfies some of the base requirements (:period, :value, :timestep)

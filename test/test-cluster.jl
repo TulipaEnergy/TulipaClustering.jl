@@ -12,7 +12,7 @@
     df = DataFrame([:p => [1, 1, 2], :ts => [1, 2, 1], :value => 1:3])
     TulipaClustering.combine_periods!(
       df;
-      layout = DataFrameLayout(; timestep = :ts, period = :p),
+      layout = ProfilesTableLayout(; timestep = :ts, period = :p),
     )
 
     @test size(df) == (3, 2)
@@ -58,7 +58,7 @@ end
 
   @testset "Custom layout computes durations and keys" begin
     @test begin
-      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
       df = DataFrame([
         :p => [1, 1, 2, 2, 3],
         :ts => [1, 2, 1, 2, 1],
@@ -76,7 +76,7 @@ end
   end
 
   @testset "Missing columns errors respect layout" begin
-    layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+    layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
 
     @test_throws DomainError begin
       df = DataFrame([:val => 1]) # missing :ts and :p
@@ -114,7 +114,7 @@ end
       TulipaClustering.split_into_periods!(
         df;
         period_duration = 2,
-        layout = DataFrameLayout(; timestep = :ts, period = :p),
+        layout = ProfilesTableLayout(; timestep = :ts, period = :p),
       )
 
       size(df) == (3, 3) &&
@@ -141,7 +141,7 @@ end
       df = DataFrame([:time_step => 1:3, :value => 1:3])
       TulipaClustering.split_into_periods!(
         df;
-        layout = DataFrameLayout(; timestep = :time_step, period = :periods),
+        layout = ProfilesTableLayout(; timestep = :time_step, period = :periods),
       )
 
       size(df) == (3, 3) &&
@@ -178,7 +178,7 @@ end
 
   @testset "Make sure validation works with custom layout and finds key columns" begin
     @test begin
-      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
       df = DataFrame([:p => [1, 1, 2], :ts => [1, 2, 1], :a .=> "a", :val => 1:3])
       keys = TulipaClustering.validate_df_and_find_key_columns(df; layout)
 
@@ -208,7 +208,7 @@ end
   end
 
   @testset "Make sure that the validation fails with custom layout when columns are absent" begin
-    layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+    layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
 
     @test_throws DomainError begin
       df = DataFrame([:val => 1]) # missing :ts and :p
@@ -278,7 +278,7 @@ end
 
   @testset "K-means works with custom layout" begin
     @test begin
-      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
       clustering_data = DataFrame([
         :p => repeat(1:2; inner = 4),
         :ts => repeat(1:2; inner = 2, outer = 2),
@@ -348,7 +348,7 @@ end
 
   @testset "K-medoids works with custom layout" begin
     @test begin
-      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
       clustering_data = DataFrame([
         :p => repeat(1:2; inner = 4),
         :ts => repeat(1:2; inner = 2, outer = 2),
@@ -384,7 +384,7 @@ end
 
   @testset "Convex hull works with custom layout" begin
     @test begin
-      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
       clustering_data = DataFrame([
         :p => repeat(1:2; inner = 4),
         :ts => repeat(1:2; inner = 2, outer = 2),
@@ -414,7 +414,7 @@ end
 
   @testset "Convex hull with null works with custom layout" begin
     @test begin
-      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
       clustering_data = DataFrame(; p = [1, 2], val = [1.0, 0.5], ts = [1, 1])
       result = find_representative_periods(
         clustering_data,
@@ -499,7 +499,7 @@ end
 
 @testset "Validating initial representatives" begin
   @testset "Custom layout: DataFrame without periods passed for initial representatives" begin
-    layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+    layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
     initial_representatives = DataFrame([:ts => 1:2, :val => 1:2])
     @test_throws DomainError(
       initial_representatives,
@@ -527,7 +527,7 @@ end
     @test_throws ArgumentError(
       "Key columns of initial represenatives do not match clustering data\nExpected was: [:ts, :technology] \nFound was: [:ts, :demand]",
     ) begin
-      layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
+      layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
       clustering_data = DataFrame([
         :p => repeat(1:2; inner = 4),
         :ts => repeat(1:2; inner = 2, outer = 2),

@@ -12,7 +12,7 @@ export cluster!, dummy_cluster!, transform_wide_to_long!
         method::Symbol = :k_means,
         distance::SemiMetric = SqEuclidean(),
         initial_representatives::AbstractDataFrame = DataFrame(),
-        layout::DataFrameLayout = DataFrameLayout(),
+        layout::ProfilesTableLayout = ProfilesTableLayout(),
         weight_type::Symbol = :convex,
         tol::Float64 = 1e-2,
         clustering_kwargs = Dict(),
@@ -55,7 +55,7 @@ finally `write_clustering_result_to_tables`.
     should be 1-indexed and the key columns should be the same as in the clustering data.
     For the hull methods it will be added before clustering, for :k_means and :k_medoids
     it will be added after clustering.
-- `layout` (default `DataFrameLayout()`): describes the column names for `period`,
+- `layout` (default `ProfilesTableLayout()`): describes the column names for `period`,
   `timestep`, and `value` in in-memory DataFrames. It does not change the SQL input
   table schema, which must contain `profile_name`, `timestep`, and `value`. Weight
   fitting operates on matrices and does not use `layout`.
@@ -84,7 +84,7 @@ function cluster!(
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
   initial_representatives::AbstractDataFrame = DataFrame(),
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
   weight_type::Symbol = :convex,
   tol::Float64 = 1e-2,
   clustering_kwargs = Dict(),

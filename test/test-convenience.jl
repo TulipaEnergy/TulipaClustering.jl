@@ -226,7 +226,7 @@ end
   profile_names = ["name1", "name2"]
 
   connection = _new_connection(; profile_names, num_timesteps)
-  layout = DataFrameLayout(; timestep = :ts, value = :val)
+  layout = ProfilesTableLayout(; timestep = :ts, value = :val)
 
   clusters = cluster!(
     connection,

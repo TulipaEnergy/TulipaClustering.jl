@@ -18,7 +18,7 @@ function weight_matrix_to_df(
 end
 
 """
-    write_clustering_result_to_tables(connection, clustering_result; database_schema="", layout=DataFrameLayout())
+    write_clustering_result_to_tables(connection, clustering_result; database_schema="", layout=ProfilesTableLayout())
 
 Writes a [`TulipaClustering.ClusteringResult`](@ref) into DuckDB tables in `connection`.
 
@@ -32,7 +32,7 @@ function write_clustering_result_to_tables(
   connection,
   clustering_result::TulipaClustering.ClusteringResult;
   database_schema = "",
-  layout::DataFrameLayout = DataFrameLayout(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
   mapping_df = weight_matrix_to_df(clustering_result.weight_matrix)
 
