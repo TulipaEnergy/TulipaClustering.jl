@@ -34,7 +34,7 @@ Behavior & edge cases:
 
 Complexity: O(n) over the number of rows (simple vectorised arithmetic + column drop).
 
-Examples
+## Examples
 
 Basic usage with default layout:
 ```
@@ -256,7 +256,7 @@ julia> TulipaClustering.validate_df_and_find_key_columns(df)
 Custom column names via a layout:
 ```
 julia> layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
-julia> df = DataFrame([:p => [1, 1, 2], :ts => [1, 2, 1], :a .=> "a", :val => 1:3])
+julia> df = DataFrame(p = [1, 1, 2], ts = [1, 2, 1], a = "a", val = 1:3)
 3×4 DataFrame
  Row │ p      ts   a       val
      │ Int64  Int64  String  Int64
@@ -319,12 +319,12 @@ Returns `AuxiliaryClusteringData` with:
 # Example
 
 ```
-julia> df = DataFrame([:period => [1,1,2,2], :timestep => [1,2,1,2], :a .=> "x", :value => 10:13])
+julia> df = DataFrame([:period => [1,1,2,2], :timestep => [1,2,1,2], :a => "x", :value => 10:13])
 julia> aux = TulipaClustering.find_auxiliary_data(df)
 AuxiliaryClusteringData([:timestep, :a], 2, 2, 2, nothing)
 
 julia> layout = DataFrameLayout(; period=:p, timestep=:ts, value=:val)
-julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,1], :a .=> "x", :val => 10:13])
+julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,1], :a => "x", :val => 10:13])
 julia> TulipaClustering.find_auxiliary_data(df2; layout)
 AuxiliaryClusteringData([:ts, :a], 2, 1, 2, nothing)
 ```
@@ -446,7 +446,7 @@ function df_to_matrix_and_keys(
 end
 
 """
-  matrix_and_keys_to_df(matrix, keys; layout = DataFrameLayout())
+    matrix_and_keys_to_df(matrix, keys; layout = DataFrameLayout())
 
 Converts a matrix `matrix` to a long-format dataframe with columns
 `(:rep_period, layout.timestep, keys..., layout.value)`.
