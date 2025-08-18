@@ -747,12 +747,12 @@ Finding two representatives using k-medoids and a custom layout:
 ```
 julia> layout = DataFrameLayout(; period = :p, timestep = :ts, value = :val)
 
-julia> df = DataFrame((
+julia> df = DataFrame(
            p = kron(1:4, ones(Int, 2)),
            ts = repeat(1:2, 4),
-           profile = repeat(["A"], 8),
+           profile = "A",
            val = 1:8,
-         ))
+         )
 
 julia> res = TulipaClustering.find_representative_periods(df, 2; method = :k_medoids, layout)
 ```
