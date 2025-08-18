@@ -25,11 +25,13 @@ end
 # Using `@kwdef` defines a default constructor based on keywords
 
 function _read_model_parameters(path)
-  if length(path) > 0 && !isfile(path)
-    throw(ArgumentError("path `$path` does not contain a file"))
+  if length(path) == 0
+    throw(ArgumentError("Argument cannot be an empty string")
+  elseif !isfile(path)
+    throw(ArgumentError("Path '$path' does not contain a file"))
   end
 
-  file_data = length(path) > 0 ? TOML.parsefile(path) : Dict{String, String}()
+  file_data = TOML.parsefile(path)
   file_parameters = Dict(Symbol(k) => Symbol(v) for (k, v) in file_data)
 
   return file_parameters

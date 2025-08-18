@@ -9,15 +9,15 @@
   end
 
   @testset "Make sure that combining periods returns a correct data frame using layout" begin
-    @test begin
-      df = DataFrame([:periods => [1, 1, 2], :time_step => [1, 2, 1], :value => 1:3])
-      TulipaClustering.combine_periods!(
-        df;
-        layout = DataFrameLayout(; timestep = :time_step, period = :periods),
-      )
+    df = DataFrame([:p => [1, 1, 2], :ts => [1, 2, 1], :value => 1:3])
+    TulipaClustering.combine_periods!(
+      df;
+      layout = DataFrameLayout(; timestep = :ts, period = :p),
+    )
 
-      size(df) == (3, 2) && df.time_step == collect(1:3) && df.value == collect(1:3)
-    end
+    @test size(df) == (3, 2)
+    @test df.ts == collect(1:3)
+    @test df.value == collect(1:3)
   end
 
   @testset "Make sure that combining periods fails when there is no time step in the data frame" begin

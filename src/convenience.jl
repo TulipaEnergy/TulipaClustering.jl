@@ -1,23 +1,23 @@
 export cluster!, dummy_cluster!, transform_wide_to_long!
 
 """
-  cluster!(
-    connection,
-    period_duration,
-    num_rps;
-    input_database_schema = "",
-    input_profile_table_name = "profiles",
-    database_schema = "",
-    drop_incomplete_last_period::Bool = false,
-    method::Symbol = :k_means,
-    distance::SemiMetric = SqEuclidean(),
-    initial_representatives::AbstractDataFrame = DataFrame(),
-    layout::DataFrameLayout = DataFrameLayout(),
-    weight_type::Symbol = :convex,
-    tol::Float64 = 1e-2,
-    clustering_kwargs = Dict(),
-    weight_fitting_kwargs = Dict(),
-  )
+    cluster!(
+        connection,
+        period_duration,
+        num_rps;
+        input_database_schema = "",
+        input_profile_table_name = "profiles",
+        database_schema = "",
+        drop_incomplete_last_period::Bool = false,
+        method::Symbol = :k_means,
+        distance::SemiMetric = SqEuclidean(),
+        initial_representatives::AbstractDataFrame = DataFrame(),
+        layout::DataFrameLayout = DataFrameLayout(),
+        weight_type::Symbol = :convex,
+        tol::Float64 = 1e-2,
+        clustering_kwargs = Dict(),
+        weight_fitting_kwargs = Dict(),
+    )
 
 Convenience function to cluster the table named in `input_profile_table_name`
 using `period_duration` and `num_rps`. The resulting tables

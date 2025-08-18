@@ -25,8 +25,8 @@ Writes a [`TulipaClustering.ClusteringResult`](@ref) into DuckDB tables in `conn
 Column naming:
 - The `profiles_rep_periods` table preserves the column names provided by `layout` for the time and value axes.
   Resulting columns are: `profile_name`, `rep_period`, `<layout.timestep>`, `<layout.value>`.
-- Other tables (`rep_periods_data`, `rep_periods_mapping`, `timeframe_data`) are layout-agnostic and keep their
-  original schema.
+- Other tables (`rep_periods_data`, `rep_periods_mapping`, `timeframe_data`) are not affected by the layout and keep
+  their original schema.
 """
 function write_clustering_result_to_tables(
   connection,

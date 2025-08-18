@@ -28,7 +28,10 @@ end
     @test layout2.period == :scenario_period
   end
 
-  @testset "Errors if path does not exist" begin
+  @testset "Errors for bad paths" begin
+    # empty string
+    @test_throws ArgumentError DataFrameLayout("")
+    # invalid path
     @test_throws ArgumentError DataFrameLayout("nonexistent.toml")
   end
 end
