@@ -32,8 +32,6 @@ Behavior & edge cases:
     values may result in non-contiguous or non-strictly increasing global indices.
   * Works in-place; the modified dataframe (without `period`) is also returned for convenience.
 
-Complexity: O(n) over the number of rows (simple vectorised arithmetic + column drop).
-
 ## Examples
 
 Basic usage with default layout:
