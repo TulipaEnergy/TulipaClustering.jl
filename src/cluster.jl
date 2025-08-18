@@ -6,7 +6,7 @@ export find_representative_periods,
 
 Combine per-period time steps into a single global `timestep` column in-place.
 
-Given a long-format dataframe `df` with (at least) a per-period time-step
+Given a long-format dataframe `df` with (at least) a per-period `timestep`
 column and, optionally, a `period` column (names provided by `layout`), this
 function rewrites the `timestep` column so that time becomes a single global,
 monotonically increasing index across all periods, then removes the original
