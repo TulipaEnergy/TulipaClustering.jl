@@ -16,7 +16,7 @@ a `key = value` list of parameters. Explicit keyword arguments take precedence.
 - `timestep::Symbol = :timestep`: The column name with the time steps in the profile.
 - `period::Symbol = :period`: The column name with the period number in the profile.
 """
-Base.@kwdef mutable struct DataFrameLayout
+Base.@kwdef struct DataFrameLayout
   value::Symbol = :value
   timestep::Symbol = :timestep
   period::Symbol = :period
