@@ -18,15 +18,21 @@ function weight_matrix_to_df(
 end
 
 """
-    write_clustering_result_to_table(connection, clustering_result)
+    write_clustering_result_to_tables(connection, clustering_result; database_schema="", layout=ProfilesTableLayout())
 
-Writes a [`TulipaClustering.ClusteringResult`](@ref) to CSV files in the
-`output_folder`.
+Writes a [`TulipaClustering.ClusteringResult`](@ref) into DuckDB tables in `connection`.
+
+Column naming:
+- The `profiles_rep_periods` table preserves the column names provided by `layout` for the time and value axes.
+  Resulting columns are: `profile_name`, `rep_period`, `<layout.timestep>`, `<layout.value>`.
+- Other tables (`rep_periods_data`, `rep_periods_mapping`, `timeframe_data`) are not affected by the layout and keep
+  their original schema.
 """
 function write_clustering_result_to_tables(
   connection,
   clustering_result::TulipaClustering.ClusteringResult;
   database_schema = "",
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
   mapping_df = weight_matrix_to_df(clustering_result.weight_matrix)
 
@@ -40,6 +46,7 @@ function write_clustering_result_to_tables(
     prefix = "$database_schema."
   end
 
+  # Preserve layout-specific column names directly
   DuckDB.register_data_frame(
     connection,
     clustering_result.profiles,

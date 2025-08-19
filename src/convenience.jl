@@ -12,13 +12,11 @@ export cluster!, dummy_cluster!, transform_wide_to_long!
         method::Symbol = :k_means,
         distance::SemiMetric = SqEuclidean(),
         initial_representatives::AbstractDataFrame = DataFrame(),
+        layout::ProfilesTableLayout = ProfilesTableLayout(),
         weight_type::Symbol = :convex,
         tol::Float64 = 1e-2,
         clustering_kwargs = Dict(),
         weight_fitting_kwargs = Dict(),
-        niters::Int = 100,
-        learning_rate::Float64 = 0.001,
-        adaptive_grad::Bool = false,
     )
 
 Convenience function to cluster the table named in `input_profile_table_name`
@@ -27,7 +25,8 @@ using `period_duration` and `num_rps`. The resulting tables
 `rep_periods_data` are loaded into `connection` in the `database_schema`, if
 given, and enriched with `year` information.
 
-This function extract the table, then calls [`split_into_periods!`](@ref),
+This function extracts the table (expecting columns `profile_name`, `timestep`, `value`),
+then calls [`split_into_periods!`](@ref),
 [`find_representative_periods`](@ref), [`fit_rep_period_weights!`](@ref), and
 finally `write_clustering_result_to_tables`.
 
@@ -56,6 +55,10 @@ finally `write_clustering_result_to_tables`.
     should be 1-indexed and the key columns should be the same as in the clustering data.
     For the hull methods it will be added before clustering, for :k_means and :k_medoids
     it will be added after clustering.
+- `layout` (default `ProfilesTableLayout()`): describes the column names for `period`,
+  `timestep`, and `value` in in-memory DataFrames. It does not change the SQL input
+  table schema, which must contain `profile_name`, `timestep`, and `value`. Weight
+  fitting operates on matrices and does not use `layout`.
 - `weight_type` (default `:convex`): the type of weights to find; possible values are:
     - `:convex`: each period is represented as a convex sum of the
       representative periods (a sum with nonnegative weights adding into one)
@@ -68,6 +71,7 @@ finally `write_clustering_result_to_tables`.
   then or equal to `tol`, they stop being fitted further.
 - `clustering_kwargs` (default `Dict()`): Extra keyword arguments passed to [`find_representative_periods`](@ref)
 - `weight_fitting_kwargs` (default `Dict()`): Extra keyword arguments passed to [`fit_rep_period_weights!`](@ref)
+  (e.g., `niters`, `learning_rate`, `adaptive_grad`).
 """
 function cluster!(
   connection,
@@ -80,16 +84,12 @@ function cluster!(
   method::Symbol = :k_means,
   distance::SemiMetric = SqEuclidean(),
   initial_representatives::AbstractDataFrame = DataFrame(),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
   weight_type::Symbol = :convex,
   tol::Float64 = 1e-2,
   clustering_kwargs = Dict(),
   weight_fitting_kwargs = Dict(),
 )
-  prefix = ""
-  if database_schema != ""
-    DBInterface.execute(connection, "CREATE SCHEMA IF NOT EXISTS $database_schema")
-    prefix = "$database_schema."
-  end
   validate_data!(
     connection;
     input_database_schema,
@@ -104,8 +104,15 @@ function cluster!(
     "SELECT * FROM $input_profile_table_name
     ",
   ) |> DataFrame
-  combine_periods!(df)
-  split_into_periods!(df; period_duration)
+  # If user provided custom layout expecting different column names, rename now so downstream honors them
+  if layout.timestep != :timestep && hasproperty(df, :timestep)
+    rename!(df, :timestep => layout.timestep)
+  end
+  if layout.value != :value && hasproperty(df, :value)
+    rename!(df, :value => layout.value)
+  end
+  combine_periods!(df; layout)
+  split_into_periods!(df; period_duration, layout)
   clusters = find_representative_periods(
     df,
     num_rps;
@@ -113,15 +120,11 @@ function cluster!(
     method,
     distance,
     initial_representatives,
+    layout,
     clustering_kwargs...,
   )
   fit_rep_period_weights!(clusters; weight_type, tol, weight_fitting_kwargs...)
-
-  for table_name in
-      ("rep_periods_data", "rep_periods_mapping", "profiles_rep_periods", "timeframe_data")
-    DuckDB.query(connection, "DROP TABLE IF EXISTS $prefix$table_name")
-  end
-  write_clustering_result_to_tables(connection, clusters; database_schema)
+  write_clustering_result_to_tables(connection, clusters; database_schema, layout)
 
   return clusters
 end
