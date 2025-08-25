@@ -17,6 +17,7 @@ include("profiles-table-layout.jl")
 include("data-validation.jl")
 include("io.jl")
 include("weight_fitting.jl")
+include("find-representative-periods.jl")
 include("cluster.jl")
 include("convenience.jl")
 
