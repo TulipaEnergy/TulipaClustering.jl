@@ -20,6 +20,7 @@ Base.@kwdef struct ProfilesTableLayout
   value::Symbol = :value
   timestep::Symbol = :timestep
   period::Symbol = :period
+  cols_to_groupby::Vector{Symbol} = Symbol[]
 end
 
 # Using `@kwdef` defines a default constructor based on keywords
