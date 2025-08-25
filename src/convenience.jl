@@ -111,7 +111,6 @@ function cluster!(
   if layout.value != :value && hasproperty(df, :value)
     rename!(df, :value => layout.value)
   end
-  combine_periods!(df; layout)
   split_into_periods!(df; period_duration, layout)
   clusters = find_representative_periods(
     df,
