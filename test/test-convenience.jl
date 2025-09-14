@@ -29,6 +29,13 @@
   @testset "It doesn't throw when called twice" begin
     transform_wide_to_long!(connection, "t_wide", "t_long")
   end
+
+  @test_throws AssertionError transform_wide_to_long!(
+    connection,
+    "t_wide",
+    "t_long";
+    exclude_columns = String[],
+  )
 end
 
 @testset "Transform wide in long with scenario column" begin
