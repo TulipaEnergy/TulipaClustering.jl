@@ -113,7 +113,8 @@ end
         ORDER BY rep_period",
       ) |> DataFrame
 
-    @test sort(names(df_rep_periods_data)) == ["num_timesteps", "rep_period", "resolution"]
+    @test sort(names(df_rep_periods_data)) ==
+          ["num_timesteps", "rep_period", "resolution", "year"]
 
     @test df_rep_periods_data.rep_period == repeat(1:num_rps)
     @test all(df_rep_periods_data.resolution .== 1.0)
@@ -128,7 +129,7 @@ end
         ORDER BY period, rep_period",
       ) |> DataFrame
 
-    @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight"]
+    @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight", "year"]
 
     @test size(df_rep_periods_mapping, 1) ≥ num_periods
   end
@@ -140,7 +141,7 @@ end
       ORDER BY period",
     ) |> DataFrame
 
-    @test sort(names(df_timeframe_data)) == ["num_timesteps", "period"]
+    @test sort(names(df_timeframe_data)) == ["num_timesteps", "period", "year"]
 
     @test df_timeframe_data.period == repeat(1:num_periods)
     @test all(df_timeframe_data.num_timesteps .== period_duration)
@@ -155,7 +156,7 @@ end
       ) |> DataFrame
 
     @test sort(names(df_profiles_rep_periods)) ==
-          ["profile_name", "rep_period", "timestep", "value"]
+          ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
 
     @test df_profiles_rep_periods.profile_name ==
           repeat(profile_names; inner = period_duration * num_rps)
@@ -202,10 +203,11 @@ end
       ORDER BY profile_name, rep_period, timestep",
     ) |> DataFrame
 
-  @test sort(names(df_rep_periods_data)) == ["num_timesteps", "rep_period", "resolution"]
-  @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight"]
+  @test sort(names(df_rep_periods_data)) ==
+        ["num_timesteps", "rep_period", "resolution", "year"]
+  @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight", "year"]
   @test sort(names(df_profiles_rep_periods)) ==
-        ["profile_name", "rep_period", "timestep", "value"]
+        ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
 
   @test df_rep_periods_data.rep_period == repeat(1:num_rps)
   @test all(df_rep_periods_data.resolution .== 1.0)
@@ -225,15 +227,30 @@ end
   end
 end
 
-@testset "cluster! respects custom layout for in-memory processing" begin
+@testset "cluster! with custom layout" begin
   period_duration = 24
   num_periods = 5
   num_timesteps = period_duration * num_periods
   num_rps = 3
+  years = [2020, 2025]
+  scenarios = [1, 2]
   profile_names = ["name1", "name2"]
+  layout = ProfilesTableLayout(;
+    timestep = :ts,
+    value = :val,
+    year = :years,
+    scenario = :scn,
+    cols_to_groupby = [:years],
+  )
 
-  connection = _new_connection(; profile_names, num_timesteps)
-  layout = ProfilesTableLayout(; timestep = :ts, value = :val)
+  # Create a connection with custom column names to match the custom layout
+  connection = _new_connection_multi_scenario_year(;
+    profile_names,
+    num_timesteps,
+    years,
+    scenarios,
+    layout,
+  )
 
   clusters = cluster!(
     connection,
@@ -252,7 +269,145 @@ end
       ORDER BY profile_name, rep_period, ts",
     ) |> DataFrame
 
-  @test sort(names(df_profiles_rep_periods)) == ["profile_name", "rep_period", "ts", "val"]
+  @test sort(names(df_profiles_rep_periods)) ==
+        ["profile_name", "rep_period", "scn", "ts", "val", "years"]
   @test size(df_profiles_rep_periods, 1) ==
-        length(profile_names) * period_duration * num_rps
+        length(profile_names) *
+        period_duration *
+        num_rps *
+        length(years) *
+        length(scenarios)
+end
+
+@testset "cluster! with groups for multi-scenario and multi-year data" begin
+  period_duration = 24
+  num_periods = 3  # Reduced to make tests faster
+  num_timesteps = period_duration * num_periods
+  num_rps = 2
+  profile_names = ["profile_A", "profile_B"]
+  years = [2020, 2021]
+  scenarios = [1, 2]
+
+  @testset "Test1: cols_to_groupby (default = [:year])" begin
+    connection =
+      _new_connection_multi_scenario_year(; profile_names, num_timesteps, years, scenarios)
+
+    layout = ProfilesTableLayout()
+
+    clusters = cluster!(
+      connection,
+      period_duration,
+      num_rps;
+      layout,
+      clustering_kwargs = Dict(:display => :none),
+      weight_fitting_kwargs = Dict(:niters => 50),
+    )
+
+    # Verify that clustering was done by year (default behavior)
+    # Should have separate clustering results for each year
+    @test length(clusters) == length(years)
+
+    # Check rep_periods_data table
+    df_rep_periods_data =
+      DuckDB.query(connection, "FROM rep_periods_data ORDER BY year, rep_period") |>
+      DataFrame
+
+    @test sort(names(df_rep_periods_data)) ==
+          ["num_timesteps", "rep_period", "resolution", "year"]
+    @test length(unique(df_rep_periods_data.year)) == length(years)
+    @test all(df_rep_periods_data.num_timesteps .== period_duration)
+
+    # Check profiles_rep_periods table
+    df_profiles_rep_periods =
+      DuckDB.query(
+        connection,
+        "FROM profiles_rep_periods ORDER BY year, scenario, profile_name, rep_period, timestep",
+      ) |> DataFrame
+
+    @test sort(names(df_profiles_rep_periods)) ==
+          ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
+
+    # Should have data for all combinations: years × scenarios × profiles × num_rps × period_duration
+    expected_rows =
+      length(years) * length(scenarios) * length(profile_names) * num_rps * period_duration
+    @test nrow(df_profiles_rep_periods) == expected_rows
+  end
+
+  @testset "Test2: cols_to_groupby = [:year, :scenario]" begin
+    connection =
+      _new_connection_multi_scenario_year(; profile_names, num_timesteps, years, scenarios)
+
+    layout = ProfilesTableLayout(; cols_to_groupby = [:year, :scenario])
+
+    clusters = cluster!(
+      connection,
+      period_duration,
+      num_rps;
+      layout,
+      clustering_kwargs = Dict(:display => :none),
+      weight_fitting_kwargs = Dict(:niters => 50),
+    )
+
+    # Verify that clustering was done by both year and scenario
+    # Should have separate clustering results for each year-scenario combination
+    @test length(clusters) == length(years) * length(scenarios)
+
+    # Check rep_periods_data table
+    df_rep_periods_data =
+      DuckDB.query(connection, "FROM rep_periods_data ORDER BY year, rep_period") |>
+      DataFrame
+
+    @test sort(names(df_rep_periods_data)) ==
+          ["num_timesteps", "rep_period", "resolution", "year"]
+    # Should have rep periods for each year-scenario combination
+    @test nrow(df_rep_periods_data) == num_rps * length(years) * length(scenarios)
+
+    # Check profiles_rep_periods table structure
+    df_profiles_rep_periods =
+      DuckDB.query(
+        connection,
+        "FROM profiles_rep_periods ORDER BY year, scenario, profile_name, rep_period, timestep",
+      ) |> DataFrame
+
+    @test sort(names(df_profiles_rep_periods)) ==
+          ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
+
+    # Should have data for all combinations: years × scenarios × profiles × num_rps × period_duration
+    expected_rows =
+      length(years) * length(scenarios) * length(profile_names) * num_rps * period_duration
+    @test nrow(df_profiles_rep_periods) == expected_rows
+
+    # Check that all year-scenario combinations are present
+    unique_combinations = unique(df_profiles_rep_periods[:, [:year, :scenario]])
+    @test nrow(unique_combinations) == length(years) * length(scenarios)
+    @test Set(unique_combinations.year) == Set(years)
+    @test Set(unique_combinations.scenario) == Set(scenarios)
+  end
+end
+
+@testset "Add optional columns" begin
+  # Test when year column already exists
+  df = DataFrame(; profile_name = ["A"], timestep = [1], value = [10.0], year = [2025])
+  layout = ProfilesTableLayout(; default_year = 2020, default_scenario = 5)
+  result_df = add_optional_columns!(df; layout)
+  @test result_df.year == [2025] # should not overwrite existing year
+  @test result_df.scenario == [5] # should add default scenario
+
+  # Test when scenario column already exists
+  df2 = DataFrame(; profile_name = ["B"], timestep = [2], value = [20.0], scenario = [10])
+  result_df2 = add_optional_columns!(df2; layout)
+  @test result_df2.scenario == [10] # should not overwrite existing scenario
+  @test result_df2.year == [2020] # should add default year
+
+  # Test when both columns already exist
+  df3 = DataFrame(;
+    profile_name = ["C"],
+    timestep = [3],
+    value = [30.0],
+    year = [2030],
+    scenario = [15],
+  )
+  result_df3 = add_optional_columns!(df3; layout)
+  @test result_df3.year == [2030] # should not overwrite
+  @test result_df3.scenario == [15] # should not overwrite
 end
