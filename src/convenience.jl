@@ -1,4 +1,4 @@
-export cluster!, dummy_cluster!, transform_wide_to_long!
+export cluster!, dummy_cluster!, transform_wide_to_long!, add_optional_columns!
 
 """
     cluster!(
@@ -94,38 +94,46 @@ function cluster!(
     connection;
     input_database_schema,
     table_names = Dict("profiles" => input_profile_table_name),
+    layout,
   )
 
   if input_database_schema != ""
     input_profile_table_name = "$input_database_schema.$input_profile_table_name"
   end
-  df = DuckDB.query(
+
+  profiles = DuckDB.query(
     connection,
     "SELECT * FROM $input_profile_table_name
     ",
   ) |> DataFrame
-  # If user provided custom layout expecting different column names, rename now so downstream honors them
-  if layout.timestep != :timestep && hasproperty(df, :timestep)
-    rename!(df, :timestep => layout.timestep)
-  end
-  if layout.value != :value && hasproperty(df, :value)
-    rename!(df, :value => layout.value)
-  end
-  split_into_periods!(df; period_duration, layout)
-  clusters = find_representative_periods(
-    df,
-    num_rps;
-    drop_incomplete_last_period,
-    method,
-    distance,
-    initial_representatives,
-    layout,
-    clustering_kwargs...,
-  )
-  fit_rep_period_weights!(clusters; weight_type, tol, weight_fitting_kwargs...)
-  write_clustering_result_to_tables(connection, clusters; database_schema, layout)
 
-  return clusters
+  add_optional_columns!(profiles; layout)
+  split_into_periods!(profiles; period_duration, layout)
+  grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
+  results_per_group = Dict(
+    group_key => find_representative_periods(
+      group,
+      num_rps;
+      drop_incomplete_last_period,
+      method,
+      distance,
+      initial_representatives,
+      layout,
+      clustering_kwargs...,
+    ) for (group_key, group) in pairs(grouped_profiles_data)
+  )
+  for clustering_result in values(results_per_group)
+    fit_rep_period_weights!(clustering_result; weight_type, tol, weight_fitting_kwargs...)
+  end
+  write_clustering_result_to_tables(
+    connection,
+    results_per_group,
+    num_rps;
+    database_schema,
+    layout,
+  )
+
+  return results_per_group
 end
 
 """
@@ -220,4 +228,51 @@ function transform_wide_to_long!(
   )
 
   return
+end
+
+"""
+  add_optional_columns!(df::DataFrame; layout::ProfilesTableLayout = ProfilesTableLayout())
+
+Add optional columns to a DataFrame if they don't already exist.
+
+This function checks if the DataFrame `df` contains the optional columns specified in the
+`layout` (year and scenario columns). If any of these columns are missing, they are added
+and filled with their respective default values from the layout configuration.
+
+# Arguments
+- `df::DataFrame`: The DataFrame to modify in-place
+- `layout::ProfilesTableLayout`: Configuration object containing column names and default values
+
+# Returns
+- `DataFrame`: The modified DataFrame with optional columns added
+
+# Examples
+
+```
+julia> using DataFrames
+julia> using TulipaClustering
+julia> df = DataFrame(profile_name = ["A", "B"], timestep = [1, 2], value = [10.0, 20.0])
+julia> layout = ProfilesTableLayout(year = :year, default_year = 2021, scenario = :scenario, default_scenario = 1)
+julia> add_optional_columns!(df; layout)
+2×5 DataFrame
+ Row │ profile_name  timestep  value    year   scenario
+     │ String        Int64     Float64  Int64  Int64
+─────┼──────────────────────────────────────────────────
+   1 │ A                    1     10.0   2021         1
+   2 │ B                    2     20.0   2021         1
+```
+"""
+function add_optional_columns!(
+  df::DataFrame;
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
+)
+  columns = propertynames(df)
+  optional_columns =
+    Dict(layout.year => layout.default_year, layout.scenario => layout.default_scenario)
+  for (col, default) in pairs(optional_columns)
+    if col ∉ columns
+      df[!, col] = fill(default, nrow(df))
+    end
+  end
+  return df
 end
