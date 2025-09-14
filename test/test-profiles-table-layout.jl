@@ -3,13 +3,35 @@
   @test layout.value == :value
   @test layout.timestep == :timestep
   @test layout.period == :period
+  @test layout.profile_name == :profile_name
+  @test layout.year == :year
+  @test layout.default_year == 2000
+  @test layout.scenario == :scenario
+  @test layout.default_scenario == 1
+  @test layout.cols_to_groupby == [:year]
 end
 
 @testset "Override defaults via kwargs" begin
-  layout = ProfilesTableLayout(; value = :val, timestep = :ts, period = :per)
+  layout = ProfilesTableLayout(;
+    value = :val,
+    timestep = :ts,
+    period = :per,
+    profile_name = :name,
+    year = :yr,
+    default_year = 2025,
+    scenario = :scen,
+    default_scenario = 5,
+    cols_to_groupby = [:year, :scenario],
+  )
   @test layout.value == :val
   @test layout.timestep == :ts
   @test layout.period == :per
+  @test layout.profile_name == :name
+  @test layout.year == :yr
+  @test layout.default_year == 2025
+  @test layout.scenario == :scen
+  @test layout.default_scenario == 5
+  @test layout.cols_to_groupby == [:year, :scenario]
 end
 
 @testset "Read from file" begin
