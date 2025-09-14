@@ -24,6 +24,7 @@ function validate_data!(
   connection;
   input_database_schema::String = "",
   table_names::Dict = Dict("profiles" => "profiles"),
+  layout::ProfilesTableLayout = ProfilesTableLayout(),
 )
   error_messages = String[]
 
@@ -32,7 +33,7 @@ function validate_data!(
     @debug log_msg
     append!(
       error_messages,
-      validation_function(connection, input_database_schema, table_names),
+      validation_function(connection, input_database_schema, table_names, layout),
     )
     if fail_fast && length(error_messages) > 0
       break
@@ -50,6 +51,7 @@ function _validate_required_tables_and_columns!(
   connection,
   input_database_schema,
   table_names,
+  layout,
 )
   error_messages = String[]
   table_name = table_names["profiles"]
@@ -83,7 +85,8 @@ function _validate_required_tables_and_columns!(
     end
   end
 
-  for column in ["profile_name", "timestep", "value"]
+  required_columns = String.([layout.profile_name, layout.timestep, layout.value])
+  for column in required_columns
     if !(column in columns_from_connection)
       push!(
         error_messages,
