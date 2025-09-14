@@ -20,8 +20,6 @@ function _new_connection(;
       $(layout.profile_name) AS $(layout.profile_name),
       i AS $(layout.timestep),
       i * 3.14 AS $(layout.value),
-      --$(layout.default_year) AS $(layout.year),
-      --$(layout.default_scenario) AS $(layout.scenario),
     FROM generate_series(1, $num_timesteps) AS s(i)
     CROSS JOIN (
       SELECT unnest([$profile_names_str]) AS $(layout.profile_name),
