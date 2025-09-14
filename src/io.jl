@@ -159,8 +159,8 @@ function _combine_group_profiles(
   profile_dfs = DataFrame[]
   for (g, (_, group_result)) in enumerate(pairs(results))
     df = group_result.profiles === nothing ? DataFrame() : copy(group_result.profiles)
-    if !isempty(df) && hasproperty(df, :rep_period)
-      df.rep_period .= df.rep_period .+ _rep_period_offset(n_rp, g)
+    if !isempty(df)
+      df.rep_period .+= _rep_period_offset(n_rp, g)
     end
     push!(profile_dfs, df)
   end
@@ -183,17 +183,8 @@ function _combine_weight_matrices(
   year_col = layout.year
 
   for (g, (group_key, group_result)) in enumerate(pairs(results))
-    weight_matrix_df = weight_matrix_to_df(group_result.weight_matrix)
-    if weight_matrix_df === nothing || isempty(weight_matrix_df)
-      weight_matrices_dfs[g] = DataFrame()
-      continue
-    end
-
-    df = copy(weight_matrix_df)
-
-    if hasproperty(df, :rep_period)
-      df.rep_period .+= _rep_period_offset(n_rp, g)
-    end
+    df = weight_matrix_to_df(group_result.weight_matrix)
+    df.rep_period .+= _rep_period_offset(n_rp, g)
 
     if year_col in keys(group_key)
       year_value = group_key[year_col]
