@@ -4,7 +4,7 @@ exclude = [
   "^https://doi.org/FIXME$",
   "^https://TulipaEnergy.github.io/TulipaClustering.jl/stable$",
   "zenodo.org/badge/DOI/FIXME$",
-  "https://blog.esciencecenter.nl/the-utopic-git-history-d44b81c09593",  
+  "https://blog.esciencecenter.nl/the-utopic-git-history-d44b81c09593",
 ]
 
 exclude_path = [
