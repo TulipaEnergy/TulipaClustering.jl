@@ -12,19 +12,13 @@ a `key = value` list of parameters. Explicit keyword arguments take precedence.
 
 ## Parameters
 
-- `value::Symbol = :value`: The column name with the profile values. This is a required column.
-- `timestep::Symbol = :timestep`: The column name with the time steps in the profile. This is a required column.
-- `period::Symbol = :period`: The column name with the period number in the profile. This is a required column.
-- `year::Symbol = :year`: The column name with the year of the profile. This is an optional column.
-  If not present, all profiles are assumed to be from `default_year`.
-- `default_year::Int = 2000`: The default year to use if the year column is not present
-  in the profiles.
-- `scenario::Symbol = :scenario`: The column name with the scenario of the profile. This is an optional column.
-  If not present, all profiles are assumed to be from `default_scenario`.
-- `default_scenario::Int = 1`: The default scenario to use if the scenario column is
-  not present in the profiles.
+- `value::Symbol = :value`: The column name with the profile values.
+- `timestep::Symbol = :timestep`: The column name with the time steps in the profile.
+- `period::Symbol = :period`: The column name with the period number in the profile.
+- `year::Symbol = :year`: The column name with the year of the profile.
+- `scenario::Symbol = :scenario`: The column name with the scenario of the profile.
 - `cols_to_groupby::Vector{Symbol} = [:year]`: The column names to group by when
-  performing clustering on groups of profiles separately. If empty, no grouping is done. Default is to group by `year`.
+  performing clustering on groups of profiles separately. If empty, no grouping is done.
 
 """
 Base.@kwdef struct ProfilesTableLayout
@@ -33,9 +27,7 @@ Base.@kwdef struct ProfilesTableLayout
   period::Symbol = :period
   profile_name::Symbol = :profile_name
   year::Symbol = :year
-  default_year::Int = 2000
   scenario::Symbol = :scenario
-  default_scenario::Int = 1
   cols_to_groupby::Vector{Symbol} = [:year]
 end
 
