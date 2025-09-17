@@ -89,6 +89,7 @@ end
   num_timesteps = period_duration * num_periods
   num_rps = 4
   profile_names = ["name1", "name2", "name3"]
+  layout = ProfilesTableLayout(; cols_to_groupby = [])
 
   connection = _new_connection(; profile_names, num_timesteps)
   clustering_kwargs = Dict(:display => :iter)
@@ -102,6 +103,7 @@ end
     database_schema,
     clustering_kwargs,
     weight_fitting_kwargs,
+    layout,
   )
   prefix = database_schema != "" ? "$(database_schema)." : ""
 
@@ -113,8 +115,7 @@ end
         ORDER BY rep_period",
       ) |> DataFrame
 
-    @test sort(names(df_rep_periods_data)) ==
-          ["num_timesteps", "rep_period", "resolution", "year"]
+    @test sort(names(df_rep_periods_data)) == ["num_timesteps", "rep_period", "resolution"]
 
     @test df_rep_periods_data.rep_period == repeat(1:num_rps)
     @test all(df_rep_periods_data.resolution .== 1.0)
@@ -129,7 +130,7 @@ end
         ORDER BY period, rep_period",
       ) |> DataFrame
 
-    @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight", "year"]
+    @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight"]
 
     @test size(df_rep_periods_mapping, 1) ≥ num_periods
   end
@@ -141,7 +142,7 @@ end
       ORDER BY period",
     ) |> DataFrame
 
-    @test sort(names(df_timeframe_data)) == ["num_timesteps", "period", "year"]
+    @test sort(names(df_timeframe_data)) == ["num_timesteps", "period"]
 
     @test df_timeframe_data.period == repeat(1:num_periods)
     @test all(df_timeframe_data.num_timesteps .== period_duration)
@@ -156,7 +157,7 @@ end
       ) |> DataFrame
 
     @test sort(names(df_profiles_rep_periods)) ==
-          ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
+          ["profile_name", "rep_period", "timestep", "value"]
 
     @test df_profiles_rep_periods.profile_name ==
           repeat(profile_names; inner = period_duration * num_rps)
@@ -167,7 +168,7 @@ end
   end
 
   @testset "It doesn't throw when called twice" begin
-    cluster!(connection, period_duration, num_rps; database_schema)
+    cluster!(connection, period_duration, num_rps; database_schema, layout)
   end
 end
 
@@ -178,10 +179,11 @@ end
   num_timesteps = period_duration * num_periods
   num_rps = 1
   profile_names = ["name1", "name2", "name3"]
+  layout = ProfilesTableLayout(; cols_to_groupby = [])
 
   connection = _new_connection(; profile_names, num_timesteps)
 
-  clusters = dummy_cluster!(connection; database_schema)
+  clusters = dummy_cluster!(connection; database_schema, layout)
   prefix = database_schema != "" ? "$(database_schema)." : ""
 
   df_rep_periods_data =
@@ -203,11 +205,10 @@ end
       ORDER BY profile_name, rep_period, timestep",
     ) |> DataFrame
 
-  @test sort(names(df_rep_periods_data)) ==
-        ["num_timesteps", "rep_period", "resolution", "year"]
-  @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight", "year"]
+  @test sort(names(df_rep_periods_data)) == ["num_timesteps", "rep_period", "resolution"]
+  @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight"]
   @test sort(names(df_profiles_rep_periods)) ==
-        ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
+        ["profile_name", "rep_period", "timestep", "value"]
 
   @test df_rep_periods_data.rep_period == repeat(1:num_rps)
   @test all(df_rep_periods_data.resolution .== 1.0)
@@ -223,7 +224,7 @@ end
         repeat(1:period_duration; outer = length(profile_names) * num_rps)
 
   @testset "It doesn't throw when called twice" begin
-    dummy_cluster!(connection; database_schema)
+    dummy_cluster!(connection; database_schema, layout)
   end
 end
 
@@ -235,13 +236,7 @@ end
   years = [2020, 2025]
   scenarios = [1, 2]
   profile_names = ["name1", "name2"]
-  layout = ProfilesTableLayout(;
-    timestep = :ts,
-    value = :val,
-    year = :years,
-    scenario = :scn,
-    cols_to_groupby = [:years],
-  )
+  layout = ProfilesTableLayout(; timestep = :ts, value = :val, scenario = :scn) # default :year col and cols_to_groupby = [:year]
 
   # Create a connection with custom column names to match the custom layout
   connection = _new_connection_multi_scenario_year(;
@@ -270,13 +265,53 @@ end
     ) |> DataFrame
 
   @test sort(names(df_profiles_rep_periods)) ==
-        ["profile_name", "rep_period", "scn", "ts", "val", "years"]
+        ["profile_name", "rep_period", "scn", "ts", "val", "year"]
+
   @test size(df_profiles_rep_periods, 1) ==
         length(profile_names) *
         period_duration *
         num_rps *
         length(years) *
         length(scenarios)
+
+  df_rep_periods_mapping =
+    DuckDB.query(
+      connection,
+      "FROM rep_periods_mapping
+      ORDER BY period, rep_period",
+    ) |> DataFrame
+
+  @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight", "year"]
+  @test size(df_rep_periods_mapping, 1) ≥ num_periods * length(years)
+end
+
+@testset "cluster! with bad cols to group by" begin
+  period_duration = 24
+  num_periods = 5
+  num_timesteps = period_duration * num_periods
+  num_rps = 3
+  years = [2020, 2025]
+  scenarios = [1, 2]
+  profile_names = ["name1", "name2"]
+  layout = ProfilesTableLayout(;
+    timestep = :ts,
+    value = :val,
+    year = :years,
+    scenario = :scn,
+    cols_to_groupby = [:year], # incorrect column name 'year' instead of 'years'
+  )
+
+  # Create a connection with custom column names to match the custom layout
+  connection = _new_connection_multi_scenario_year(;
+    profile_names,
+    num_timesteps,
+    years,
+    scenarios,
+    layout,
+  )
+
+  error_msg = "ArgumentError: Column 'year' in 'cols_to_groupby' is not defined in the layout"
+  @test_throws error_msg throw(cluster!(connection, period_duration, num_rps; layout))
 end
 
 @testset "cluster! with groups for multi-scenario and multi-year data" begin
@@ -288,17 +323,14 @@ end
   years = [2020, 2021]
   scenarios = [1, 2]
 
-  @testset "Test1: cols_to_groupby (default = [:year])" begin
+  @testset "Test1: using default layout (cols_to_groupby = [:year])" begin
     connection =
       _new_connection_multi_scenario_year(; profile_names, num_timesteps, years, scenarios)
-
-    layout = ProfilesTableLayout()
 
     clusters = cluster!(
       connection,
       period_duration,
       num_rps;
-      layout,
       clustering_kwargs = Dict(:display => :none),
       weight_fitting_kwargs = Dict(:niters => 50),
     )
@@ -331,6 +363,10 @@ end
     expected_rows =
       length(years) * length(scenarios) * length(profile_names) * num_rps * period_duration
     @test nrow(df_profiles_rep_periods) == expected_rows
+
+    @testset "It doesn't throw when called twice" begin
+      cluster!(connection, period_duration, num_rps)
+    end
   end
 
   @testset "Test2: cols_to_groupby = [:year, :scenario]" begin
@@ -358,7 +394,7 @@ end
       DataFrame
 
     @test sort(names(df_rep_periods_data)) ==
-          ["num_timesteps", "rep_period", "resolution", "year"]
+          ["num_timesteps", "rep_period", "resolution", "scenario", "year"]
     # Should have rep periods for each year-scenario combination
     @test nrow(df_rep_periods_data) == num_rps * length(years) * length(scenarios)
 
@@ -382,32 +418,9 @@ end
     @test nrow(unique_combinations) == length(years) * length(scenarios)
     @test Set(unique_combinations.year) == Set(years)
     @test Set(unique_combinations.scenario) == Set(scenarios)
+
+    @testset "It doesn't throw when called twice" begin
+      cluster!(connection, period_duration, num_rps; layout)
+    end
   end
-end
-
-@testset "Add optional columns" begin
-  # Test when year column already exists
-  df = DataFrame(; profile_name = ["A"], timestep = [1], value = [10.0], year = [2025])
-  layout = ProfilesTableLayout(; default_year = 2020, default_scenario = 5)
-  result_df = add_optional_columns!(df; layout)
-  @test result_df.year == [2025] # should not overwrite existing year
-  @test result_df.scenario == [5] # should add default scenario
-
-  # Test when scenario column already exists
-  df2 = DataFrame(; profile_name = ["B"], timestep = [2], value = [20.0], scenario = [10])
-  result_df2 = add_optional_columns!(df2; layout)
-  @test result_df2.scenario == [10] # should not overwrite existing scenario
-  @test result_df2.year == [2020] # should add default year
-
-  # Test when both columns already exist
-  df3 = DataFrame(;
-    profile_name = ["C"],
-    timestep = [3],
-    value = [30.0],
-    year = [2030],
-    scenario = [15],
-  )
-  result_df3 = add_optional_columns!(df3; layout)
-  @test result_df3.year == [2030] # should not overwrite
-  @test result_df3.scenario == [15] # should not overwrite
 end
