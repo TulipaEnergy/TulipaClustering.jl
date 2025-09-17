@@ -170,6 +170,7 @@ end
 """
 A function to combine weight matrices from different groups.
 For group index g, new_rep_period = old_rep_period + offset given by _rep_period_offset(n_rp, g).
+In addition, the group key columns are added to the resulting dataframe.
 """
 function _combine_weight_matrices(
   results::Dict{
@@ -186,9 +187,9 @@ function _combine_weight_matrices(
     df = weight_matrix_to_df(group_result.weight_matrix)
     df.rep_period .+= _rep_period_offset(n_rp, g)
 
-    if year_col in keys(group_key)
-      year_value = group_key[year_col]
-      insertcols!(df, 1, year_col => year_value)
+    for col in keys(group_key)
+      col_value = group_key[col]
+      insertcols!(df, 1, col => fill(col_value, nrow(df)))
     end
 
     weight_matrices_dfs[g] = df
@@ -203,6 +204,7 @@ end
 """
 A function to combine rep_periods_data from different groups.
 For group index g, new_rep_period = old_rep_period + offset given by _rep_period_offset(n_rp, g).
+In addition, the group key columns are added to the resulting dataframe.
 """
 function _combine_rep_periods_data(
   results::Dict{
@@ -222,18 +224,18 @@ function _combine_rep_periods_data(
     first_rep_period = 1 + _rep_period_offset(n_rp, g)
     last_rep_period = n_rp + _rep_period_offset(n_rp, g)
 
-    rp_data_df = DataFrame(;
+    df = DataFrame(;
       rep_period = first_rep_period:last_rep_period,
       num_timesteps = rep_period_duration,
       resolution = 1.0,
     )
 
-    if year_col in keys(group_key)
-      year_value = group_key[year_col]
-      insertcols!(rp_data_df, 1, year_col => year_value)
+    for col in keys(group_key)
+      col_value = group_key[col]
+      insertcols!(df, 1, col => fill(col_value, nrow(df)))
     end
 
-    rep_periods_data_dfs[g] = rp_data_df
+    rep_periods_data_dfs[g] = df
   end
 
   # Filter out empty DataFrames for cleaner concatenation
@@ -245,6 +247,7 @@ end
 """
 A function to combine timeframe_data from different groups.
 Creates timeframe data with period information for each group.
+In addition, the group key columns are added to the resulting dataframe.
 """
 function _combine_timeframe_data(
   results::Dict{
@@ -262,14 +265,14 @@ function _combine_timeframe_data(
     period_duration = fill(aux.period_duration, num_periods)
     period_duration[end] = aux.last_period_duration
 
-    period_data_df = DataFrame(; period = 1:num_periods, num_timesteps = period_duration)
+    df = DataFrame(; period = 1:num_periods, num_timesteps = period_duration)
 
-    if year_col in keys(group_key)
-      year_value = group_key[year_col]
-      insertcols!(period_data_df, 1, year_col => year_value)
+    for col in keys(group_key)
+      col_value = group_key[col]
+      insertcols!(df, 1, col => fill(col_value, nrow(df)))
     end
 
-    timeframe_data_dfs[g] = period_data_df
+    timeframe_data_dfs[g] = df
   end
 
   # Filter out empty DataFrames for cleaner concatenation
