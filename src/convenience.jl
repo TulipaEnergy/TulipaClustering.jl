@@ -1,4 +1,4 @@
-export cluster!, dummy_cluster!, transform_wide_to_long!, add_optional_columns!
+export cluster!, dummy_cluster!, transform_wide_to_long!
 
 """
     cluster!(
@@ -96,6 +96,7 @@ function cluster!(
     table_names = Dict("profiles" => input_profile_table_name),
     layout,
   )
+  _check_layout_consistency_with_cols_to_groupby(layout)
 
   if input_database_schema != ""
     input_profile_table_name = "$input_database_schema.$input_profile_table_name"
@@ -107,7 +108,6 @@ function cluster!(
     ",
   ) |> DataFrame
 
-  add_optional_columns!(profiles; layout)
   split_into_periods!(profiles; period_duration, layout)
   grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
   results_per_group = Dict(
@@ -230,49 +230,15 @@ function transform_wide_to_long!(
   return
 end
 
-"""
-  add_optional_columns!(df::DataFrame; layout::ProfilesTableLayout = ProfilesTableLayout())
-
-Add optional columns to a DataFrame if they don't already exist.
-
-This function checks if the DataFrame `df` contains the optional columns specified in the
-`layout` (year and scenario columns). If any of these columns are missing, they are added
-and filled with their respective default values from the layout configuration.
-
-# Arguments
-- `df::DataFrame`: The DataFrame to modify in-place
-- `layout::ProfilesTableLayout`: Configuration object containing column names and default values
-
-# Returns
-- `DataFrame`: The modified DataFrame with optional columns added
-
-# Examples
-
-```
-julia> using DataFrames
-julia> using TulipaClustering
-julia> df = DataFrame(profile_name = ["A", "B"], timestep = [1, 2], value = [10.0, 20.0])
-julia> layout = ProfilesTableLayout(year = :year, default_year = 2021, scenario = :scenario, default_scenario = 1)
-julia> add_optional_columns!(df; layout)
-2×5 DataFrame
- Row │ profile_name  timestep  value    year   scenario
-     │ String        Int64     Float64  Int64  Int64
-─────┼──────────────────────────────────────────────────
-   1 │ A                    1     10.0   2021         1
-   2 │ B                    2     20.0   2021         1
-```
-"""
-function add_optional_columns!(
-  df::DataFrame;
-  layout::ProfilesTableLayout = ProfilesTableLayout(),
-)
-  columns = propertynames(df)
-  optional_columns =
-    Dict(layout.year => layout.default_year, layout.scenario => layout.default_scenario)
-  for (col, default) in pairs(optional_columns)
-    if col ∉ columns
-      df[!, col] = fill(default, nrow(df))
+function _check_layout_consistency_with_cols_to_groupby(layout::ProfilesTableLayout)
+  all_fields = fieldnames(ProfilesTableLayout)
+  layout_fields = [getfield(layout, field) for field in all_fields]
+  for col in layout.cols_to_groupby
+    if !(col in layout_fields)
+      throw(
+        ArgumentError("Column '$col' in 'cols_to_groupby' is not defined in the layout"),
+      )
     end
   end
-  return df
+  return nothing
 end
