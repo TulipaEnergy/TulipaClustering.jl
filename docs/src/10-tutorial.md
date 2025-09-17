@@ -176,14 +176,23 @@ nice_query("FROM timeframe_data LIMIT 5")
 
 ### Using a custom layout
 
-You can customize the in-memory (and output) column names used for the time step and value
-columns by passing a `ProfilesTableLayout` to [`cluster!`](@ref). The input SQL table must still
-use the standard column names (`profile_name`, `timestep`, `value`). The layout only affects
-the in-memory DataFrames and the resulting `profiles_rep_periods` output table. Other output
-tables are layout-agnostic.
+Let's say that you have a table that uses different names for the columns of your data.
+For example, let's rename the column `timestep` to `hour` in the profiles table.
 
-Below we cluster again but ask the output table to use `ts` and `val` instead of the defaults
-`timestep` and `value`:
+```@example duckdb_example
+DuckDB.query(
+  connection,
+  "ALTER TABLE profiles
+   RENAME COLUMN timestep to hour;
+  ",
+)
+
+nice_query("FROM profiles LIMIT 10")
+```
+
+In this case, you can use the custom column name by passing a `ProfilesTableLayout` to [`cluster!`](@ref).
+The layout names will also be preserved in the output tables. Below we cluster again, but ask passing the
+information to use `hour` instead of the default `timestep`:
 
 ```@example duckdb_example
 for table_name in (
@@ -195,12 +204,10 @@ for table_name in (
     DuckDB.query(connection, "DROP TABLE IF EXISTS $table_name")
 end
 
-layout = TulipaClustering.ProfilesTableLayout(; timestep = :ts, value = :val)
+layout = TulipaClustering.ProfilesTableLayout(; timestep = :hour)
 clusters_custom = cluster!(connection, period_duration, num_rps; layout)
 
 nice_query("FROM profiles_rep_periods LIMIT 5")
 ```
 
-Notice the columns `ts` and `val` in the output above (instead of `timestep` / `value`).
-
-If you prefer to always export the default column names, omit the `layout` argument.
+Notice the column `hour` in the output above (instead of `timestep`).

@@ -30,6 +30,7 @@ end
       connection,
       database_schema,
       table_names,
+      TC.ProfilesTableLayout(),
     ) == ["Table 'profiles' expected but not found in schema '$database_schema'"]
   end
 
@@ -45,6 +46,7 @@ end
         connection,
         database_schema,
         table_names,
+        TC.ProfilesTableLayout(),
       ) == [
         "Column '$column' is missing from table 'profiles' in schema '$database_schema'",
       ]
