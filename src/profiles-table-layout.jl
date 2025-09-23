@@ -28,7 +28,7 @@ Base.@kwdef struct ProfilesTableLayout
   profile_name::Symbol = :profile_name
   year::Symbol = :year
   scenario::Symbol = :scenario
-  cols_to_groupby::Vector{Symbol} = [:year]
+  cols_to_groupby::Vector{Symbol} = [year]
 end
 
 # Using `@kwdef` defines a default constructor based on keywords
