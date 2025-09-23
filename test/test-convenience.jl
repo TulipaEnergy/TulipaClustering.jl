@@ -29,6 +29,13 @@
   @testset "It doesn't throw when called twice" begin
     transform_wide_to_long!(connection, "t_wide", "t_long")
   end
+
+  @test_throws AssertionError transform_wide_to_long!(
+    connection,
+    "t_wide",
+    "t_long";
+    exclude_columns = String[],
+  )
 end
 
 @testset "Transform wide in long with scenario column" begin
@@ -82,6 +89,7 @@ end
   num_timesteps = period_duration * num_periods
   num_rps = 4
   profile_names = ["name1", "name2", "name3"]
+  layout = ProfilesTableLayout(; cols_to_groupby = [])
 
   connection = _new_connection(; profile_names, num_timesteps)
   clustering_kwargs = Dict(:display => :iter)
@@ -95,6 +103,7 @@ end
     database_schema,
     clustering_kwargs,
     weight_fitting_kwargs,
+    layout,
   )
   prefix = database_schema != "" ? "$(database_schema)." : ""
 
@@ -159,7 +168,7 @@ end
   end
 
   @testset "It doesn't throw when called twice" begin
-    cluster!(connection, period_duration, num_rps; database_schema)
+    cluster!(connection, period_duration, num_rps; database_schema, layout)
   end
 end
 
@@ -170,10 +179,11 @@ end
   num_timesteps = period_duration * num_periods
   num_rps = 1
   profile_names = ["name1", "name2", "name3"]
+  layout = ProfilesTableLayout(; cols_to_groupby = [])
 
   connection = _new_connection(; profile_names, num_timesteps)
 
-  clusters = dummy_cluster!(connection; database_schema)
+  clusters = dummy_cluster!(connection; database_schema, layout)
   prefix = database_schema != "" ? "$(database_schema)." : ""
 
   df_rep_periods_data =
@@ -214,19 +224,28 @@ end
         repeat(1:period_duration; outer = length(profile_names) * num_rps)
 
   @testset "It doesn't throw when called twice" begin
-    dummy_cluster!(connection; database_schema)
+    dummy_cluster!(connection; database_schema, layout)
   end
 end
 
-@testset "cluster! respects custom layout for in-memory processing" begin
+@testset "cluster! with custom layout" begin
   period_duration = 24
   num_periods = 5
   num_timesteps = period_duration * num_periods
   num_rps = 3
+  years = [2020, 2025]
+  scenarios = [1, 2]
   profile_names = ["name1", "name2"]
+  layout = ProfilesTableLayout(; timestep = :ts, value = :val, scenario = :scn) # default :year col and cols_to_groupby = [:year]
 
-  connection = _new_connection(; profile_names, num_timesteps)
-  layout = ProfilesTableLayout(; timestep = :ts, value = :val)
+  # Create a connection with custom column names to match the custom layout
+  connection = _new_connection_multi_scenario_year(;
+    profile_names,
+    num_timesteps,
+    years,
+    scenarios,
+    layout,
+  )
 
   clusters = cluster!(
     connection,
@@ -245,7 +264,163 @@ end
       ORDER BY profile_name, rep_period, ts",
     ) |> DataFrame
 
-  @test sort(names(df_profiles_rep_periods)) == ["profile_name", "rep_period", "ts", "val"]
+  @test sort(names(df_profiles_rep_periods)) ==
+        ["profile_name", "rep_period", "scn", "ts", "val", "year"]
+
   @test size(df_profiles_rep_periods, 1) ==
-        length(profile_names) * period_duration * num_rps
+        length(profile_names) *
+        period_duration *
+        num_rps *
+        length(years) *
+        length(scenarios)
+
+  df_rep_periods_mapping =
+    DuckDB.query(
+      connection,
+      "FROM rep_periods_mapping
+      ORDER BY period, rep_period",
+    ) |> DataFrame
+
+  @test sort(names(df_rep_periods_mapping)) == ["period", "rep_period", "weight", "year"]
+  @test size(df_rep_periods_mapping, 1) ≥ num_periods * length(years)
+end
+
+@testset "cluster! with bad cols to group by" begin
+  period_duration = 24
+  num_periods = 5
+  num_timesteps = period_duration * num_periods
+  num_rps = 3
+  years = [2020, 2025]
+  scenarios = [1, 2]
+  profile_names = ["name1", "name2"]
+  layout = ProfilesTableLayout(;
+    timestep = :ts,
+    value = :val,
+    year = :years,
+    scenario = :scn,
+    cols_to_groupby = [:year], # incorrect column name 'year' instead of 'years'
+  )
+
+  # Create a connection with custom column names to match the custom layout
+  connection = _new_connection_multi_scenario_year(;
+    profile_names,
+    num_timesteps,
+    years,
+    scenarios,
+    layout,
+  )
+
+  error_msg = "ArgumentError: Column 'year' in 'cols_to_groupby' is not defined in the layout"
+  @test_throws error_msg throw(cluster!(connection, period_duration, num_rps; layout))
+end
+
+@testset "cluster! with groups for multi-scenario and multi-year data" begin
+  period_duration = 24
+  num_periods = 3  # Reduced to make tests faster
+  num_timesteps = period_duration * num_periods
+  num_rps = 2
+  profile_names = ["profile_A", "profile_B"]
+  years = [2020, 2021]
+  scenarios = [1, 2]
+
+  @testset "Test1: using default layout (cols_to_groupby = [:year])" begin
+    connection =
+      _new_connection_multi_scenario_year(; profile_names, num_timesteps, years, scenarios)
+
+    clusters = cluster!(
+      connection,
+      period_duration,
+      num_rps;
+      clustering_kwargs = Dict(:display => :none),
+      weight_fitting_kwargs = Dict(:niters => 50),
+    )
+
+    # Verify that clustering was done by year (default behavior)
+    # Should have separate clustering results for each year
+    @test length(clusters) == length(years)
+
+    # Check rep_periods_data table
+    df_rep_periods_data =
+      DuckDB.query(connection, "FROM rep_periods_data ORDER BY year, rep_period") |>
+      DataFrame
+
+    @test sort(names(df_rep_periods_data)) ==
+          ["num_timesteps", "rep_period", "resolution", "year"]
+    @test length(unique(df_rep_periods_data.year)) == length(years)
+    @test all(df_rep_periods_data.num_timesteps .== period_duration)
+
+    # Check profiles_rep_periods table
+    df_profiles_rep_periods =
+      DuckDB.query(
+        connection,
+        "FROM profiles_rep_periods ORDER BY year, scenario, profile_name, rep_period, timestep",
+      ) |> DataFrame
+
+    @test sort(names(df_profiles_rep_periods)) ==
+          ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
+
+    # Should have data for all combinations: years × scenarios × profiles × num_rps × period_duration
+    expected_rows =
+      length(years) * length(scenarios) * length(profile_names) * num_rps * period_duration
+    @test nrow(df_profiles_rep_periods) == expected_rows
+
+    @testset "It doesn't throw when called twice" begin
+      cluster!(connection, period_duration, num_rps)
+    end
+  end
+
+  @testset "Test2: cols_to_groupby = [:year, :scenario]" begin
+    connection =
+      _new_connection_multi_scenario_year(; profile_names, num_timesteps, years, scenarios)
+
+    layout = ProfilesTableLayout(; cols_to_groupby = [:year, :scenario])
+
+    clusters = cluster!(
+      connection,
+      period_duration,
+      num_rps;
+      layout,
+      clustering_kwargs = Dict(:display => :none),
+      weight_fitting_kwargs = Dict(:niters => 50),
+    )
+
+    # Verify that clustering was done by both year and scenario
+    # Should have separate clustering results for each year-scenario combination
+    @test length(clusters) == length(years) * length(scenarios)
+
+    # Check rep_periods_data table
+    df_rep_periods_data =
+      DuckDB.query(connection, "FROM rep_periods_data ORDER BY year, rep_period") |>
+      DataFrame
+
+    @test sort(names(df_rep_periods_data)) ==
+          ["num_timesteps", "rep_period", "resolution", "scenario", "year"]
+    # Should have rep periods for each year-scenario combination
+    @test nrow(df_rep_periods_data) == num_rps * length(years) * length(scenarios)
+
+    # Check profiles_rep_periods table structure
+    df_profiles_rep_periods =
+      DuckDB.query(
+        connection,
+        "FROM profiles_rep_periods ORDER BY year, scenario, profile_name, rep_period, timestep",
+      ) |> DataFrame
+
+    @test sort(names(df_profiles_rep_periods)) ==
+          ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
+
+    # Should have data for all combinations: years × scenarios × profiles × num_rps × period_duration
+    expected_rows =
+      length(years) * length(scenarios) * length(profile_names) * num_rps * period_duration
+    @test nrow(df_profiles_rep_periods) == expected_rows
+
+    # Check that all year-scenario combinations are present
+    unique_combinations = unique(df_profiles_rep_periods[:, [:year, :scenario]])
+    @test nrow(unique_combinations) == length(years) * length(scenarios)
+    @test Set(unique_combinations.year) == Set(years)
+    @test Set(unique_combinations.scenario) == Set(scenarios)
+
+    @testset "It doesn't throw when called twice" begin
+      cluster!(connection, period_duration, num_rps; layout)
+    end
+  end
 end

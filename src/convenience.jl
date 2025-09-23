@@ -94,38 +94,46 @@ function cluster!(
     connection;
     input_database_schema,
     table_names = Dict("profiles" => input_profile_table_name),
+    layout,
   )
+  _check_layout_consistency_with_cols_to_groupby(layout)
 
   if input_database_schema != ""
     input_profile_table_name = "$input_database_schema.$input_profile_table_name"
   end
-  df = DuckDB.query(
+
+  profiles = DuckDB.query(
     connection,
     "SELECT * FROM $input_profile_table_name
     ",
   ) |> DataFrame
-  # If user provided custom layout expecting different column names, rename now so downstream honors them
-  if layout.timestep != :timestep && hasproperty(df, :timestep)
-    rename!(df, :timestep => layout.timestep)
-  end
-  if layout.value != :value && hasproperty(df, :value)
-    rename!(df, :value => layout.value)
-  end
-  split_into_periods!(df; period_duration, layout)
-  clusters = find_representative_periods(
-    df,
-    num_rps;
-    drop_incomplete_last_period,
-    method,
-    distance,
-    initial_representatives,
-    layout,
-    clustering_kwargs...,
-  )
-  fit_rep_period_weights!(clusters; weight_type, tol, weight_fitting_kwargs...)
-  write_clustering_result_to_tables(connection, clusters; database_schema, layout)
 
-  return clusters
+  split_into_periods!(profiles; period_duration, layout)
+  grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
+  results_per_group = Dict(
+    group_key => find_representative_periods(
+      group,
+      num_rps;
+      drop_incomplete_last_period,
+      method,
+      distance,
+      initial_representatives,
+      layout,
+      clustering_kwargs...,
+    ) for (group_key, group) in pairs(grouped_profiles_data)
+  )
+  for clustering_result in values(results_per_group)
+    fit_rep_period_weights!(clustering_result; weight_type, tol, weight_fitting_kwargs...)
+  end
+  write_clustering_result_to_tables(
+    connection,
+    results_per_group,
+    num_rps;
+    database_schema,
+    layout,
+  )
+
+  return results_per_group
 end
 
 """
@@ -220,4 +228,17 @@ function transform_wide_to_long!(
   )
 
   return
+end
+
+function _check_layout_consistency_with_cols_to_groupby(layout::ProfilesTableLayout)
+  all_fields = fieldnames(ProfilesTableLayout)
+  layout_fields = [getfield(layout, field) for field in all_fields]
+  for col in layout.cols_to_groupby
+    if !(col in layout_fields)
+      throw(
+        ArgumentError("Column '$col' in 'cols_to_groupby' is not defined in the layout"),
+      )
+    end
+  end
+  return nothing
 end

@@ -15,12 +15,20 @@ a `key = value` list of parameters. Explicit keyword arguments take precedence.
 - `value::Symbol = :value`: The column name with the profile values.
 - `timestep::Symbol = :timestep`: The column name with the time steps in the profile.
 - `period::Symbol = :period`: The column name with the period number in the profile.
+- `year::Symbol = :year`: The column name with the year of the profile.
+- `scenario::Symbol = :scenario`: The column name with the scenario of the profile.
+- `cols_to_groupby::Vector{Symbol} = [:year]`: The column names to group by when
+  performing clustering on groups of profiles separately. If empty, no grouping is done.
+
 """
 Base.@kwdef struct ProfilesTableLayout
   value::Symbol = :value
   timestep::Symbol = :timestep
   period::Symbol = :period
-  cols_to_groupby::Vector{Symbol} = Symbol[]
+  profile_name::Symbol = :profile_name
+  year::Symbol = :year
+  scenario::Symbol = :scenario
+  cols_to_groupby::Vector{Symbol} = [year]
 end
 
 # Using `@kwdef` defines a default constructor based on keywords
