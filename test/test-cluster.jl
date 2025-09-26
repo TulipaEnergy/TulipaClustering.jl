@@ -460,7 +460,7 @@ end
 end
 
 @testset "Bad number of representative periods" begin
-  @testset "Test that non-positive numbers of RPs throw correctly" begin
+  @testset "Test that a wrong numbers of RPs throw correctly" begin
     clustering_data = DataFrame([
       :period => repeat(1:2; inner = 4),
       :timestep => repeat(1:2; inner = 2, outer = 2),
@@ -470,6 +470,29 @@ end
     @test_throws ArgumentError find_representative_periods(clustering_data, 0)
     @test_throws ArgumentError find_representative_periods(clustering_data, -1)
     @test_throws ArgumentError find_representative_periods(clustering_data, 3)
+  end
+  @testset "Test that a wrong numbers of RPs with incomplete periods throw correctly" begin
+    clustering_data = DataFrame([
+      :period => repeat(1:2; inner = 4),
+      :timestep => repeat(1:2; inner = 2, outer = 2),
+      :technology => repeat(["Solar", "Nuclear"], 4),
+      :value => 5:12,
+    ])
+    # add a row with an incomplete period for all the technologies
+    clustering_data = vcat(
+      clustering_data,
+      DataFrame([
+        :period => repeat([3], 2),
+        :timestep => [1, 1],
+        :technology => ["Solar", "Nuclear"],
+        :value => [13, 14],
+      ]),
+    )
+    @test_throws ArgumentError find_representative_periods(
+      clustering_data,
+      3;
+      drop_incomplete_last_period = true,
+    )
   end
 end
 
