@@ -110,6 +110,14 @@ function find_representative_periods(
     )
   end
 
+  if drop_incomplete_last_period && n_rp > n_periods - 1
+    throw(
+      ArgumentError(
+        "The number of representative periods exceeds the total number of complete periods when dropping the last incomplete period, $n_rp > $(n_periods - 1).",
+      ),
+    )
+  end
+
   has_incomplete_last_period = aux.last_period_duration ≠ aux.period_duration
   is_last_period_excluded = has_incomplete_last_period && !drop_incomplete_last_period
   n_complete_periods = has_incomplete_last_period ? n_periods - 1 : n_periods
