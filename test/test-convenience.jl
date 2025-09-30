@@ -424,3 +424,337 @@ end
     end
   end
 end
+
+@testset "cluster! with initial representatives" begin
+  period_duration = 24
+  num_periods = 3  # Reduced to make tests faster
+  num_timesteps = period_duration * num_periods
+  num_rps = 2
+  profile_names = ["profile_A", "profile_B"]
+  years = [2020, 2021]
+  scenarios = [1, 2]
+
+  @testset "Test1: using default layout (cols_to_groupby = [:year])" begin
+    @testset "Test1.1: initial representatives for all years" begin
+      connection = _new_connection_multi_scenario_year(;
+        profile_names,
+        num_timesteps,
+        years,
+        scenarios,
+      )
+
+      # Create initial representatives for all years and all scenarios
+      # Key columns are: [:timestep, :profile_name, :year, :scenario]
+      initial_representatives = DataFrame()
+      for year in years
+        for scenario in scenarios
+          for profile in profile_names
+            rep_data = DataFrame([
+              :period => ones(Int, period_duration),
+              :timestep => 1:period_duration,
+              :profile_name => fill(profile, period_duration),
+              :value => fill(10.0 + year * 0.1 + scenario * 0.01, period_duration),
+              :year => fill(year, period_duration),
+              :scenario => fill(scenario, period_duration),
+            ])
+            initial_representatives = vcat(initial_representatives, rep_data)
+          end
+        end
+      end
+
+      clusters = cluster!(
+        connection,
+        period_duration,
+        num_rps;
+        initial_representatives,
+        clustering_kwargs = Dict(:display => :none),
+        weight_fitting_kwargs = Dict(:niters => 20),
+      )
+
+      # Should have separate clustering results for each year
+      @test length(clusters) == length(years)
+
+      # Check that initial representatives are used - they may get different rep_period numbers
+      # based on the clustering algorithm and grouping
+      df_profiles_rep_periods =
+        DuckDB.query(
+          connection,
+          "FROM profiles_rep_periods
+          ORDER BY year, scenario, profile_name, rep_period, timestep",
+        ) |> DataFrame
+
+      # Verify structure
+      @test sort(names(df_profiles_rep_periods)) ==
+            ["profile_name", "rep_period", "scenario", "timestep", "value", "year"]
+
+      # Should have data for all combinations: years × scenarios × profiles × num_rps × period_duration
+      expected_rows =
+        length(years) *
+        length(scenarios) *
+        length(profile_names) *
+        num_rps *
+        period_duration
+      @test nrow(df_profiles_rep_periods) == expected_rows
+
+      # Verify that initial representatives' values are present in the results
+      # Since we provided initial representatives for all year-scenario combinations,
+      # we should find some representative periods with values close to our initial values
+      for year in years
+        for scenario in scenarios
+          for profile in profile_names
+            expected_value = 10.0 + year * 0.1 + scenario * 0.01
+            # Find representative periods for this combination
+            matching_rows = df_profiles_rep_periods[
+              (df_profiles_rep_periods.year .== year) .& (df_profiles_rep_periods.scenario .== scenario) .& (df_profiles_rep_periods.profile_name .== profile),
+              :,
+            ]
+            @test nrow(matching_rows) > 0
+            # Check if any representative period has values close to our initial representatives
+            unique_values = unique(matching_rows.value)
+            @test any(abs.(unique_values .- expected_value) .< 1e-10)
+          end
+        end
+      end
+    end
+
+    @testset "Test1.2: initial representatives for only one year" begin
+      connection = _new_connection_multi_scenario_year(;
+        profile_names,
+        num_timesteps,
+        years,
+        scenarios,
+      )
+
+      # Create initial representatives only for 2020 but for all scenarios
+      # Key columns are: [:timestep, :profile_name, :year, :scenario]
+      initial_representatives = DataFrame()
+      for scenario in scenarios
+        for profile in profile_names
+          rep_data = DataFrame([
+            :period => ones(Int, period_duration),
+            :timestep => 1:period_duration,
+            :profile_name => fill(profile, period_duration),
+            :value => fill(30.0 + (profile == "profile_A" ? 0.0 : 10.0), period_duration),
+            :year => fill(2020, period_duration),
+            :scenario => fill(scenario, period_duration),
+          ])
+          initial_representatives = vcat(initial_representatives, rep_data)
+        end
+      end
+
+      clusters = cluster!(
+        connection,
+        period_duration,
+        num_rps;
+        initial_representatives,
+        clustering_kwargs = Dict(:display => :none),
+        weight_fitting_kwargs = Dict(:niters => 20),
+      )
+
+      # Should still have clustering results for each year
+      @test length(clusters) == length(years)
+
+      # Check that initial representatives are only used for 2020 (all scenarios)
+      # They may get different rep_period numbers based on clustering
+      df_profiles_rep_periods =
+        DuckDB.query(
+          connection,
+          "FROM profiles_rep_periods
+          WHERE year = 2020
+          ORDER BY scenario, profile_name, rep_period, timestep",
+        ) |> DataFrame
+
+      # Should have data for 2020 all scenarios: scenarios × profiles × num_rps × period_duration
+      expected_rows = length(scenarios) * length(profile_names) * num_rps * period_duration
+      @test nrow(df_profiles_rep_periods) == expected_rows
+
+      # Verify that initial representatives' values are present in the 2020 results
+      # We provided initial representatives only for 2020, so they should be found there
+      for scenario in scenarios
+        for profile in profile_names
+          expected_value = 30.0 + (profile == "profile_A" ? 0.0 : 10.0)
+          # Find representative periods for this combination in 2020
+          matching_rows = df_profiles_rep_periods[
+            (df_profiles_rep_periods.scenario .== scenario) .& (df_profiles_rep_periods.profile_name .== profile),
+            :,
+          ]
+          @test nrow(matching_rows) > 0
+          # Check if any representative period has values close to our initial representatives
+          unique_values = unique(matching_rows.value)
+          @test any(abs.(unique_values .- expected_value) .< 1e-10)
+        end
+      end
+    end
+  end
+
+  @testset "Test2: cols_to_groupby = [:year, :scenario]" begin
+    connection =
+      _new_connection_multi_scenario_year(; profile_names, num_timesteps, years, scenarios)
+
+    layout = ProfilesTableLayout(; cols_to_groupby = [:year, :scenario])
+
+    # Create initial representatives for specific year-scenario combinations
+    # Key columns are: [:timestep, :profile_name, :year, :scenario]
+    initial_representatives = DataFrame()
+
+    # Add for year 2020, scenario 1
+    for profile in profile_names
+      rep_data = DataFrame([
+        :period => ones(Int, period_duration),
+        :timestep => 1:period_duration,
+        :profile_name => fill(profile, period_duration),
+        :value => fill(50.0 + (profile == "profile_A" ? 0.0 : 10.0), period_duration),
+        :year => fill(2020, period_duration),
+        :scenario => fill(1, period_duration),
+      ])
+      initial_representatives = vcat(initial_representatives, rep_data)
+    end
+
+    # Add for year 2021, scenario 2
+    for profile in profile_names
+      rep_data = DataFrame([
+        :period => ones(Int, period_duration),
+        :timestep => 1:period_duration,
+        :profile_name => fill(profile, period_duration),
+        :value => fill(70.0 + (profile == "profile_A" ? 0.0 : 10.0), period_duration),
+        :year => fill(2021, period_duration),
+        :scenario => fill(2, period_duration),
+      ])
+      initial_representatives = vcat(initial_representatives, rep_data)
+    end
+
+    clusters = cluster!(
+      connection,
+      period_duration,
+      num_rps;
+      layout,
+      initial_representatives,
+      clustering_kwargs = Dict(:display => :none),
+      weight_fitting_kwargs = Dict(:niters => 20),
+    )
+
+    # Should have clustering results for each year-scenario combination
+    @test length(clusters) == length(years) * length(scenarios)
+
+    # Check rep_periods_data table
+    df_rep_periods_data =
+      DuckDB.query(
+        connection,
+        "FROM rep_periods_data ORDER BY year, scenario, rep_period",
+      ) |> DataFrame
+
+    @test sort(names(df_rep_periods_data)) ==
+          ["num_timesteps", "rep_period", "resolution", "scenario", "year"]
+    # Should have rep periods for each year-scenario combination
+    @test nrow(df_rep_periods_data) == num_rps * length(years) * length(scenarios)
+
+    # Check that initial representatives are used for the specific combinations
+    df_profiles_rep_periods =
+      DuckDB.query(
+        connection,
+        "FROM profiles_rep_periods
+        WHERE ((year = 2020 AND scenario = 1) OR (year = 2021 AND scenario = 2))
+        ORDER BY year, scenario, profile_name, rep_period, timestep",
+      ) |> DataFrame
+
+    # Should have data for the two specific year-scenario combinations where we provided initial reps
+    # Each combination should have num_rps × length(profile_names) × period_duration rows
+    expected_rows = 2 * num_rps * length(profile_names) * period_duration  # 2 combinations
+    @test nrow(df_profiles_rep_periods) == expected_rows
+
+    # Verify that initial representatives' values are present in the specific combinations
+    # Check (2020, scenario 1)
+    for profile in profile_names
+      expected_value = 50.0 + (profile == "profile_A" ? 0.0 : 10.0)
+      matching_rows = df_profiles_rep_periods[
+        (df_profiles_rep_periods.year .== 2020) .& (df_profiles_rep_periods.scenario .== 1) .& (df_profiles_rep_periods.profile_name .== profile),
+        :,
+      ]
+      @test nrow(matching_rows) > 0
+      unique_values = unique(matching_rows.value)
+      @test any(abs.(unique_values .- expected_value) .< 1e-10)
+    end
+
+    # Check (2021, scenario 2)
+    for profile in profile_names
+      expected_value = 70.0 + (profile == "profile_A" ? 0.0 : 10.0)
+      matching_rows = df_profiles_rep_periods[
+        (df_profiles_rep_periods.year .== 2021) .& (df_profiles_rep_periods.scenario .== 2) .& (df_profiles_rep_periods.profile_name .== profile),
+        :,
+      ]
+      @test nrow(matching_rows) > 0
+      unique_values = unique(matching_rows.value)
+      @test any(abs.(unique_values .- expected_value) .< 1e-10)
+    end
+  end
+
+  @testset "Test3: cols_to_groupby = [] (empty)" begin
+    connection = _new_connection(; profile_names, num_timesteps = num_timesteps)
+
+    layout = ProfilesTableLayout(; cols_to_groupby = [])
+
+    # Create initial representatives without grouping columns
+    # Key columns are: [:timestep, :profile_name]
+    initial_representatives = DataFrame()
+    for profile in profile_names
+      rep_data = DataFrame([
+        :period => ones(Int, period_duration),
+        :timestep => 1:period_duration,
+        :profile_name => fill(profile, period_duration),
+        :value => fill(100.0 + (profile == "profile_A" ? 0.0 : 100.0), period_duration),
+      ])
+      initial_representatives = vcat(initial_representatives, rep_data)
+    end
+
+    clusters = cluster!(
+      connection,
+      period_duration,
+      num_rps;
+      layout,
+      initial_representatives,
+      clustering_kwargs = Dict(:display => :none),
+      weight_fitting_kwargs = Dict(:niters => 20),
+    )
+
+    # Should have only one clustering result (no grouping)
+    @test length(clusters) == 1
+
+    # Check rep_periods_data table
+    df_rep_periods_data =
+      DuckDB.query(connection, "FROM rep_periods_data ORDER BY rep_period") |> DataFrame
+
+    @test sort(names(df_rep_periods_data)) == ["num_timesteps", "rep_period", "resolution"]
+    @test nrow(df_rep_periods_data) == num_rps
+
+    # Check that initial representatives are used
+    df_profiles_rep_periods =
+      DuckDB.query(
+        connection,
+        "FROM profiles_rep_periods
+        WHERE rep_period = 2  -- This should be our initial representative
+        ORDER BY profile_name, timestep",
+      ) |> DataFrame
+
+    @test sort(names(df_profiles_rep_periods)) ==
+          ["profile_name", "rep_period", "timestep", "value"]
+
+    # Should have data for our initial representative
+    expected_rows = length(profile_names) * period_duration
+    @test nrow(df_profiles_rep_periods) == expected_rows
+
+    # Verify that initial representatives' values are present in the results
+    # Check that rep_period = 2 contains our initial representative values
+    for profile in profile_names
+      expected_value = 100.0 + (profile == "profile_A" ? 0.0 : 100.0)
+      matching_rows =
+        df_profiles_rep_periods[df_profiles_rep_periods.profile_name .== profile, :]
+      @test nrow(matching_rows) > 0
+      # All values should be exactly our initial representative values
+      @test all(abs.(matching_rows.value .- expected_value) .< 1e-10)
+    end
+
+    @testset "It doesn't throw when called twice" begin
+      cluster!(connection, period_duration, num_rps; layout, initial_representatives)
+    end
+  end
+end
