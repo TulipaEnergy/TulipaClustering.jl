@@ -95,6 +95,7 @@ function cluster!(
     input_database_schema,
     table_names = Dict("profiles" => input_profile_table_name),
     layout,
+    initial_representatives,
   )
   _check_layout_consistency_with_cols_to_groupby(layout)
 

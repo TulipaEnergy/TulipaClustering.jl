@@ -25,6 +25,7 @@ function validate_data!(
   input_database_schema::String = "",
   table_names::Dict = Dict("profiles" => "profiles"),
   layout::ProfilesTableLayout = ProfilesTableLayout(),
+  initial_representatives::AbstractDataFrame = DataFrame(),
 )
   error_messages = String[]
 
@@ -33,7 +34,13 @@ function validate_data!(
     @debug log_msg
     append!(
       error_messages,
-      validation_function(connection, input_database_schema, table_names, layout),
+      validation_function(
+        connection,
+        input_database_schema,
+        table_names,
+        layout,
+        initial_representatives,
+      ),
     )
     if fail_fast && length(error_messages) > 0
       break
@@ -52,6 +59,7 @@ function _validate_required_tables_and_columns!(
   input_database_schema,
   table_names,
   layout,
+  initial_representatives,
 )
   error_messages = String[]
   table_name = table_names["profiles"]
@@ -85,6 +93,7 @@ function _validate_required_tables_and_columns!(
     end
   end
 
+  # Check required columns from the table in the connection
   required_columns = String.([layout.profile_name, layout.timestep, layout.value])
   for column in required_columns
     if !(column in columns_from_connection)
@@ -92,6 +101,19 @@ function _validate_required_tables_and_columns!(
         error_messages,
         "Column '$column' is missing from table '$table_name' in schema '$input_database_schema'",
       )
+    end
+  end
+
+  # Check required columns in the initial representatives DataFrame if provided
+  if !isempty(initial_representatives)
+    required_columns = columns_from_connection ∪ String.([layout.period])
+    for column in required_columns
+      if !(column in names(initial_representatives))
+        push!(
+          error_messages,
+          "Column '$column' is missing from the initial representatives DataFrame. Hint! It must have the same columns as the '$table_name' table plus the '$(layout.period)' column.",
+        )
+      end
     end
   end
 
