@@ -118,7 +118,10 @@ function cluster!(
       drop_incomplete_last_period,
       method,
       distance,
-      initial_representatives,
+      initial_representatives = _get_initial_representatives_for_group(
+        initial_representatives,
+        group_key,
+      ),
       layout,
       clustering_kwargs...,
     ) for (group_key, group) in pairs(grouped_profiles_data)
@@ -242,4 +245,31 @@ function _check_layout_consistency_with_cols_to_groupby(layout::ProfilesTableLay
     end
   end
   return nothing
+end
+
+function _get_initial_representatives_for_group(
+  initial_representatives::AbstractDataFrame,
+  group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
+)
+  # Return empty DataFrame if no initial representatives provided
+  if isempty(initial_representatives)
+    return DataFrame()
+  end
+
+  # Start with all rows as potential matches
+  num_rows = nrow(initial_representatives)
+  rows_matching_group = trues(num_rows)
+
+  # For each grouping column, filter to rows that match the group's value
+  for column_name in keys(group_key)
+    group_value = group_key[column_name]
+    column_values = initial_representatives[!, column_name]
+    column_matches = column_values .== group_value
+
+    # Keep only rows that match this column AND all previous columns
+    rows_matching_group .&= column_matches
+  end
+
+  # Return the subset of initial representatives that belong to this group
+  return initial_representatives[rows_matching_group, :]
 end
