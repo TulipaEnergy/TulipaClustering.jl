@@ -10,53 +10,53 @@ Condat's accelerated implementation (2017). See Figure 2 of
 the meanings of v, ṽ, ρ and other variables, see the original paper.
 """
 function project_onto_simplex(vector::Vector{Float64})
-  # There is a trivial solution when it's a one-element vector
-  if length(vector) == 1
-    return [1.0]
-  end
-  # step 1
-  v = [vector[1]]
-  ṽ = Vector{Float64}()
-  ρ = vector[1] - 1.0
-  # step 2
-  for y in vector[2:end]
-    if y > ρ
-      ρ += (y - ρ) / (length(v) + 1)
-      if ρ > y - 1.0
-        push!(v, y)
-      else
-        append!(ṽ, v)
-        v = [y]
-        ρ = y - 1.0
-      end
+    # There is a trivial solution when it's a one-element vector
+    if length(vector) == 1
+        return [1.0]
     end
-  end
-  # step 3
-  for y in ṽ
-    if y > ρ
-      push!(v, y)
-      ρ += (y - ρ) / length(v)
+    # step 1
+    v = [vector[1]]
+    ṽ = Vector{Float64}()
+    ρ = vector[1] - 1.0
+    # step 2
+    for y in vector[2:end]
+        if y > ρ
+            ρ += (y - ρ) / (length(v) + 1)
+            if ρ > y - 1.0
+                push!(v, y)
+            else
+                append!(ṽ, v)
+                v = [y]
+                ρ = y - 1.0
+            end
+        end
     end
-  end
-  # step 4
-  while true
-    length_v = length(v)
-    to_be_removed = Vector{Int}()
-    for (i, y) in enumerate(v)
-      if y ≤ ρ
-        push!(to_be_removed, i)
-        length_v -= 1
-        ρ += (ρ - y) / length_v
-      end
+    # step 3
+    for y in ṽ
+        if y > ρ
+            push!(v, y)
+            ρ += (y - ρ) / length(v)
+        end
     end
-    if length(to_be_removed) == 0
-      break
+    # step 4
+    while true
+        length_v = length(v)
+        to_be_removed = Vector{Int}()
+        for (i, y) in enumerate(v)
+            if y ≤ ρ
+                push!(to_be_removed, i)
+                length_v -= 1
+                ρ += (ρ - y) / length_v
+            end
+        end
+        if length(to_be_removed) == 0
+            break
+        end
+        deleteat!(v, to_be_removed)
     end
-    deleteat!(v, to_be_removed)
-  end
-  # step 5 is skipped because it computes the data that we do not need
-  # step 6
-  return max.(vector .- ρ, 0.0)
+    # step 5 is skipped because it computes the data that we do not need
+    # step 6
+    return max.(vector .- ρ, 0.0)
 end
 
 """
@@ -66,7 +66,7 @@ Projects `vector` onto the nonnegative orthant. This projection is trivial:
 replace negative components of the vector with zeros.
 """
 function project_onto_nonnegative_orthant(vector::Vector{Float64})
-  return max.(vector, 0.0)
+    return max.(vector, 0.0)
 end
 
 """
@@ -77,10 +77,10 @@ replace all components of the vector with zeros, except for the largest one,
 which is replaced with one.
 """
 function project_onto_standard_basis(vector::Vector{Float64})
-  i = argmax(vector)
-  result = zeros(size(vector))
-  result[i] = 1.0
-  return result
+    i = argmax(vector)
+    result = zeros(size(vector))
+    result[i] = 1.0
+    return result
 end
 
 """
@@ -108,39 +108,39 @@ The arguments:
       (https://dl.acm.org/doi/10.5555/1953048.2021068)
 """
 function projected_subgradient_descent!(
-  x::Vector{Float64};
-  subgradient::Function,
-  projection::Function,
-  niters::Int = 100,
-  tol::Float64 = 1e-5,
-  learning_rate::Float64 = 0.001,
-  adaptive_grad = false,
+    x::Vector{Float64};
+    subgradient::Function,
+    projection::Function,
+    niters::Int = 100,
+    tol::Float64 = 1e-5,
+    learning_rate::Float64 = 0.001,
+    adaptive_grad = false,
 )
-  # It is possible that the initial guess is not in the required subspace;
-  # project it first.
-  x = projection(x)
+    # It is possible that the initial guess is not in the required subspace;
+    # project it first.
+    x = projection(x)
 
-  if adaptive_grad
-    G = zeros(length(x))
-  end
+    if adaptive_grad
+        G = zeros(length(x))
+    end
 
-  for _ in 1:niters
-    g = subgradient(x)  # find the subgradient
-    if adaptive_grad    # find the learning rate
-      G += g .^ 2
-      α = learning_rate ./ (1e-6 .+ .√(G))
-    else
-      α = learning_rate
+    for _ in 1:niters
+        g = subgradient(x)  # find the subgradient
+        if adaptive_grad    # find the learning rate
+            G += g .^ 2
+            α = learning_rate ./ (1e-6 .+ .√(G))
+        else
+            α = learning_rate
+        end
+        y = x .- α .* g            # gradent step, may leave the domain
+        x_new = projection(y)      # projection step, return to the domain
+        diff = maximum(x_new - x)  # how much did the vector change
+        x = x_new
+        if diff ≤ tol
+            break
+        end
     end
-    y = x .- α .* g            # gradent step, may leave the domain
-    x_new = projection(y)      # projection step, return to the domain
-    diff = maximum(x_new - x)  # how much did the vector change
-    x = x_new
-    if diff ≤ tol
-      break
-    end
-  end
-  return x
+    return x
 end
 
 """
@@ -171,76 +171,81 @@ The arguments:
     through to `TulipaClustering.projected_subgradient_descent!`.
 """
 function fit_rep_period_weights!(
-  weight_matrix::Union{SparseMatrixCSC{Float64, Int64}, Matrix{Float64}},
-  clustering_matrix::Matrix{Float64},
-  rp_matrix::Matrix{Float64};
-  weight_type::Symbol = :dirac,
-  tol::Float64 = 1e-2,
-  show_progress = false,
-  args...,
+    weight_matrix::Union{SparseMatrixCSC{Float64, Int64}, Matrix{Float64}},
+    clustering_matrix::Matrix{Float64},
+    rp_matrix::Matrix{Float64};
+    weight_type::Symbol = :dirac,
+    tol::Float64 = 1e-2,
+    show_progress = false,
+    args...,
 )
-  # Determine the appropriate projection method
-  if weight_type == :dirac
-    projection = project_onto_standard_basis
-  elseif weight_type == :convex
-    projection = project_onto_simplex
-  elseif weight_type == :conical
-    projection = project_onto_nonnegative_orthant
-  elseif weight_type == :conical_bounded
-    # Conic bounded method does convex fitting, but adds a zero component.
-    # The weight of a zero vector is then discarded without affecting the
-    # total, and the resulting weights will always have sums between zero and
-    # one.
-    projection = project_onto_simplex
-    n_data_points = size(rp_matrix, 1)
-    rp_matrix = hcat(rp_matrix, repeat([0.0], n_data_points))
-  else
-    throw(ArgumentError("Unsupported weight type."))
-  end
-
-  n_periods = size(clustering_matrix, 2)
-  n_rp = size(rp_matrix, 2)
-
-  is_sparse = issparse(weight_matrix)
-
-  if show_progress
-    println("Fitting representative period weights:")
-    periods = ProgressBar(1:n_periods)
-  else
-    periods = 1:n_periods
-  end
-
-  for period in periods
-    # TODO: this can be parallelized; investigate
-    target_vector = clustering_matrix[:, period]
-    subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
-    if weight_type == :conical_bounded
-      x = vcat(Vector(weight_matrix[period, 1:(n_rp - 1)]), [0.0])
+    # Determine the appropriate projection method
+    if weight_type == :dirac
+        projection = project_onto_standard_basis
+    elseif weight_type == :convex
+        projection = project_onto_simplex
+    elseif weight_type == :conical
+        projection = project_onto_nonnegative_orthant
+    elseif weight_type == :conical_bounded
+        # Conic bounded method does convex fitting, but adds a zero component.
+        # The weight of a zero vector is then discarded without affecting the
+        # total, and the resulting weights will always have sums between zero and
+        # one.
+        projection = project_onto_simplex
+        n_data_points = size(rp_matrix, 1)
+        rp_matrix = hcat(rp_matrix, repeat([0.0], n_data_points))
     else
-      x = Vector(weight_matrix[period, 1:n_rp])
+        throw(ArgumentError("Unsupported weight type."))
     end
-    x =
-      projected_subgradient_descent!(x; subgradient, projection, tol = tol * 0.01, args...)
-    x[x .< tol] .= 0.0  # replace insignificant small values with zeros
-    if weight_type == :convex || weight_type == :conical_bounded
-      # Because some values might have been removed, convexity can be lost.
-      # In the upper-bounded case, sometimes the sum can be slightly more than one
-      # due to floating-point arithmetic and rounding.
-      # To account for these cases, the weights are re-normalized.
-      sum_x = sum(x)
-      if weight_type == :convex || sum_x > 1.0
-        x = x ./ sum_x
-      end
+
+    n_periods = size(clustering_matrix, 2)
+    n_rp = size(rp_matrix, 2)
+
+    is_sparse = issparse(weight_matrix)
+
+    if show_progress
+        println("Fitting representative period weights:")
+        periods = ProgressBar(1:n_periods)
+    else
+        periods = 1:n_periods
     end
-    if weight_type == :conical_bounded
-      pop!(x)
+
+    for period in periods
+        # TODO: this can be parallelized; investigate
+        target_vector = clustering_matrix[:, period]
+        subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
+        if weight_type == :conical_bounded
+            x = vcat(Vector(weight_matrix[period, 1:(n_rp - 1)]), [0.0])
+        else
+            x = Vector(weight_matrix[period, 1:n_rp])
+        end
+        x = projected_subgradient_descent!(
+            x;
+            subgradient,
+            projection,
+            tol = tol * 0.01,
+            args...,
+        )
+        x[x .< tol] .= 0.0  # replace insignificant small values with zeros
+        if weight_type == :convex || weight_type == :conical_bounded
+            # Because some values might have been removed, convexity can be lost.
+            # In the upper-bounded case, sometimes the sum can be slightly more than one
+            # due to floating-point arithmetic and rounding.
+            # To account for these cases, the weights are re-normalized.
+            sum_x = sum(x)
+            if weight_type == :convex || sum_x > 1.0
+                x = x ./ sum_x
+            end
+        end
+        if weight_type == :conical_bounded
+            pop!(x)
+        end
+        if is_sparse
+            x = sparse(x)
+        end
+        weight_matrix[period, 1:length(x)] = x
     end
-    if is_sparse
-      x = sparse(x)
-    end
-    weight_matrix[period, 1:length(x)] = x
-  end
-  return weight_matrix
+    return weight_matrix
 end
 
 """
@@ -268,17 +273,17 @@ The arguments:
     through to `TulipaClustering.projected_subgradient_descent!`.
 """
 function fit_rep_period_weights!(
-  clustering_result::ClusteringResult;
-  weight_type::Symbol = :dirac,
-  tol::Float64 = 1e-2,
-  args...,
-)
-  fit_rep_period_weights!(
-    clustering_result.weight_matrix,
-    clustering_result.clustering_matrix,
-    clustering_result.rp_matrix;
-    weight_type,
-    tol,
+    clustering_result::ClusteringResult;
+    weight_type::Symbol = :dirac,
+    tol::Float64 = 1e-2,
     args...,
-  )
+)
+    fit_rep_period_weights!(
+        clustering_result.weight_matrix,
+        clustering_result.clustering_matrix,
+        clustering_result.rp_matrix;
+        weight_type,
+        tol,
+        args...,
+    )
 end
