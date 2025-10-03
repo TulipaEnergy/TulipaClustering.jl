@@ -1,13 +1,41 @@
 # Changes here will be overwritten by Copier
-AnswerStrategy: recommended
+AddAllcontributors: true
+AddCitationCFF: true
+AddCodeOfConduct: true
+AddCompatHelperCI: true
+AddContributionDocs: true
+AddCopierCI: false
+AddDependabot: true
+AddDocs: true
+AddDocsCI: true
+AddFormatterAndLinterConfigFiles: true
+AddGitHubPRTemplate: true
+AddGitHubTemplates: true
+AddLintCI: true
+AddLychee: true
+AddMacToCI: false
+AddPrecommit: true
+AddTagBotCI: true
+AddTestCI: true
+AddWinToCI: false
 Authors: Greg Neustroev <G.Neustroev@tudelft.nl> and contributors
+AutoIncludeTests: true
+CheckExplicitImports: false
 CodeOfConductContact: G.Neustroev@tudelft.nl
-JuliaIndentation: 2
-JuliaMinVersion: 1.10.5
+ConfigIndentation: 2
+JuliaIndentation: 4
+JuliaMinCIVersion: lts
+JuliaMinVersion: '1.10'
 License: Apache-2.0
 LicenseCopyrightHolders: Greg Neustroev
+MarkdownIndentation: 4
 PackageName: TulipaClustering
 PackageOwner: TulipaEnergy
 PackageUUID: 314fac8b-c762-4aa3-9d12-851379729163
-_commit: v0.12.0
+RunJuliaNightlyOnCI: false
+StrategyConfirmIncluded: true
+StrategyLevel: 2
+StrategyReviewExcluded: true
+UseCirrusCI: false
+_commit: v0.16.2
 _src_path: https://github.com/JuliaBesties/BestieTemplate.jl

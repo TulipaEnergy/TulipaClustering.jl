@@ -22,32 +22,32 @@ a `key = value` list of parameters. Explicit keyword arguments take precedence.
 
 """
 Base.@kwdef struct ProfilesTableLayout
-  value::Symbol = :value
-  timestep::Symbol = :timestep
-  period::Symbol = :period
-  profile_name::Symbol = :profile_name
-  year::Symbol = :year
-  scenario::Symbol = :scenario
-  cols_to_groupby::Vector{Symbol} = [year]
+    value::Symbol = :value
+    timestep::Symbol = :timestep
+    period::Symbol = :period
+    profile_name::Symbol = :profile_name
+    year::Symbol = :year
+    scenario::Symbol = :scenario
+    cols_to_groupby::Vector{Symbol} = [year]
 end
 
 # Using `@kwdef` defines a default constructor based on keywords
 
 function _read_model_parameters(path)
-  if length(path) == 0
-    throw(ArgumentError("Argument cannot be an empty string"))
-  elseif !isfile(path)
-    throw(ArgumentError("Path '$path' does not contain a file"))
-  end
+    if length(path) == 0
+        throw(ArgumentError("Argument cannot be an empty string"))
+    elseif !isfile(path)
+        throw(ArgumentError("Path '$path' does not contain a file"))
+    end
 
-  file_data = TOML.parsefile(path)
-  file_parameters = Dict(Symbol(k) => Symbol(v) for (k, v) in file_data)
+    file_data = TOML.parsefile(path)
+    file_parameters = Dict(Symbol(k) => Symbol(v) for (k, v) in file_data)
 
-  return file_parameters
+    return file_parameters
 end
 
 function ProfilesTableLayout(path::String; kwargs...)
-  file_parameters = _read_model_parameters(path)
+    file_parameters = _read_model_parameters(path)
 
-  return ProfilesTableLayout(; file_parameters..., kwargs...)
+    return ProfilesTableLayout(; file_parameters..., kwargs...)
 end

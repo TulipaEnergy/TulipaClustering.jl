@@ -74,70 +74,76 @@ finally `write_clustering_result_to_tables`.
   (e.g., `niters`, `learning_rate`, `adaptive_grad`).
 """
 function cluster!(
-  connection,
-  period_duration,
-  num_rps;
-  input_database_schema = "",
-  input_profile_table_name = "profiles",
-  database_schema = "",
-  drop_incomplete_last_period::Bool = false,
-  method::Symbol = :k_means,
-  distance::SemiMetric = SqEuclidean(),
-  initial_representatives::AbstractDataFrame = DataFrame(),
-  layout::ProfilesTableLayout = ProfilesTableLayout(),
-  weight_type::Symbol = :convex,
-  tol::Float64 = 1e-2,
-  clustering_kwargs = Dict(),
-  weight_fitting_kwargs = Dict(),
-)
-  validate_data!(
-    connection;
-    input_database_schema,
-    table_names = Dict("profiles" => input_profile_table_name),
-    layout,
-    initial_representatives,
-  )
-  _check_layout_consistency_with_cols_to_groupby(layout)
-
-  if input_database_schema != ""
-    input_profile_table_name = "$input_database_schema.$input_profile_table_name"
-  end
-
-  profiles = DuckDB.query(
     connection,
-    "SELECT * FROM $input_profile_table_name
-    ",
-  ) |> DataFrame
-
-  split_into_periods!(profiles; period_duration, layout)
-  grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
-  results_per_group = Dict(
-    group_key => find_representative_periods(
-      group,
-      num_rps;
-      drop_incomplete_last_period,
-      method,
-      distance,
-      initial_representatives = _get_initial_representatives_for_group(
-        initial_representatives,
-        group_key,
-      ),
-      layout,
-      clustering_kwargs...,
-    ) for (group_key, group) in pairs(grouped_profiles_data)
-  )
-  for clustering_result in values(results_per_group)
-    fit_rep_period_weights!(clustering_result; weight_type, tol, weight_fitting_kwargs...)
-  end
-  write_clustering_result_to_tables(
-    connection,
-    results_per_group,
+    period_duration,
     num_rps;
-    database_schema,
-    layout,
-  )
+    input_database_schema = "",
+    input_profile_table_name = "profiles",
+    database_schema = "",
+    drop_incomplete_last_period::Bool = false,
+    method::Symbol = :k_means,
+    distance::SemiMetric = SqEuclidean(),
+    initial_representatives::AbstractDataFrame = DataFrame(),
+    layout::ProfilesTableLayout = ProfilesTableLayout(),
+    weight_type::Symbol = :convex,
+    tol::Float64 = 1e-2,
+    clustering_kwargs = Dict(),
+    weight_fitting_kwargs = Dict(),
+)
+    validate_data!(
+        connection;
+        input_database_schema,
+        table_names = Dict("profiles" => input_profile_table_name),
+        layout,
+        initial_representatives,
+    )
+    _check_layout_consistency_with_cols_to_groupby(layout)
 
-  return results_per_group
+    if input_database_schema != ""
+        input_profile_table_name = "$input_database_schema.$input_profile_table_name"
+    end
+
+    profiles =
+        DuckDB.query(
+            connection,
+            "SELECT * FROM $input_profile_table_name
+            ",
+        ) |> DataFrame
+
+    split_into_periods!(profiles; period_duration, layout)
+    grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
+    results_per_group = Dict(
+        group_key => find_representative_periods(
+            group,
+            num_rps;
+            drop_incomplete_last_period,
+            method,
+            distance,
+            initial_representatives = _get_initial_representatives_for_group(
+                initial_representatives,
+                group_key,
+            ),
+            layout,
+            clustering_kwargs...,
+        ) for (group_key, group) in pairs(grouped_profiles_data)
+    )
+    for clustering_result in values(results_per_group)
+        fit_rep_period_weights!(
+            clustering_result;
+            weight_type,
+            tol,
+            weight_fitting_kwargs...,
+        )
+    end
+    write_clustering_result_to_tables(
+        connection,
+        results_per_group,
+        num_rps;
+        database_schema,
+        layout,
+    )
+
+    return results_per_group
 end
 
 """
@@ -151,21 +157,23 @@ the whole profile.
 See [`cluster!`](@ref) for more details of what is created.
 """
 function dummy_cluster!(
-  connection;
-  input_database_schema = "",
-  input_profile_table_name = "profiles",
-  kwargs...,
+    connection;
+    input_database_schema = "",
+    input_profile_table_name = "profiles",
+    kwargs...,
 )
-  table_name = if input_database_schema != ""
-    "$input_database_schema.$input_profile_table_name"
-  else
-    input_profile_table_name
-  end
-  period_duration = only([
-    row.max_timestep for row in
-    DuckDB.query(connection, "SELECT MAX(timestep) AS max_timestep FROM $table_name")
-  ])
-  cluster!(connection, period_duration, 1; kwargs...)
+    table_name = if input_database_schema != ""
+        "$input_database_schema.$input_profile_table_name"
+    else
+        input_profile_table_name
+    end
+    period_duration = only([
+        row.max_timestep for row in DuckDB.query(
+            connection,
+            "SELECT MAX(timestep) AS max_timestep FROM $table_name",
+        )
+    ])
+    cluster!(connection, period_duration, 1; kwargs...)
 end
 
 """
@@ -210,66 +218,68 @@ This conversion is done using the `UNPIVOT` SQL command from DuckDB.
 - `value_column = "value"`: Name of the new column that holds the values from the old columns
 """
 function transform_wide_to_long!(
-  connection,
-  wide_table_name,
-  long_table_name;
-  exclude_columns = ["year", "timestep"],
-  name_column = "profile_name",
-  value_column = "value",
-)
-  @assert length(exclude_columns) > 0
-  exclude_str = join(exclude_columns, ", ")
-  DuckDB.query(
     connection,
-    "CREATE OR REPLACE TABLE $long_table_name AS
-    UNPIVOT $wide_table_name
-    ON COLUMNS(* EXCLUDE ($exclude_str))
-    INTO
-        NAME $name_column
-        VALUE $value_column
-    ORDER BY $name_column, $exclude_str
-    ",
-  )
+    wide_table_name,
+    long_table_name;
+    exclude_columns = ["year", "timestep"],
+    name_column = "profile_name",
+    value_column = "value",
+)
+    @assert length(exclude_columns) > 0
+    exclude_str = join(exclude_columns, ", ")
+    DuckDB.query(
+        connection,
+        "CREATE OR REPLACE TABLE $long_table_name AS
+        UNPIVOT $wide_table_name
+        ON COLUMNS(* EXCLUDE ($exclude_str))
+        INTO
+            NAME $name_column
+            VALUE $value_column
+        ORDER BY $name_column, $exclude_str
+        ",
+    )
 
-  return
+    return
 end
 
 function _check_layout_consistency_with_cols_to_groupby(layout::ProfilesTableLayout)
-  all_fields = fieldnames(ProfilesTableLayout)
-  layout_fields = [getfield(layout, field) for field in all_fields]
-  for col in layout.cols_to_groupby
-    if !(col in layout_fields)
-      throw(
-        ArgumentError("Column '$col' in 'cols_to_groupby' is not defined in the layout"),
-      )
+    all_fields = fieldnames(ProfilesTableLayout)
+    layout_fields = [getfield(layout, field) for field in all_fields]
+    for col in layout.cols_to_groupby
+        if !(col in layout_fields)
+            throw(
+                ArgumentError(
+                    "Column '$col' in 'cols_to_groupby' is not defined in the layout",
+                ),
+            )
+        end
     end
-  end
-  return nothing
+    return nothing
 end
 
 function _get_initial_representatives_for_group(
-  initial_representatives::AbstractDataFrame,
-  group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
+    initial_representatives::AbstractDataFrame,
+    group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
 )
-  # Return empty DataFrame if no initial representatives provided
-  if isempty(initial_representatives)
-    return DataFrame()
-  end
+    # Return empty DataFrame if no initial representatives provided
+    if isempty(initial_representatives)
+        return DataFrame()
+    end
 
-  # Start with all rows as potential matches
-  num_rows = nrow(initial_representatives)
-  rows_matching_group = trues(num_rows)
+    # Start with all rows as potential matches
+    num_rows = nrow(initial_representatives)
+    rows_matching_group = trues(num_rows)
 
-  # For each grouping column, filter to rows that match the group's value
-  for column_name in keys(group_key)
-    group_value = group_key[column_name]
-    column_values = initial_representatives[!, column_name]
-    column_matches = column_values .== group_value
+    # For each grouping column, filter to rows that match the group's value
+    for column_name in keys(group_key)
+        group_value = group_key[column_name]
+        column_values = initial_representatives[!, column_name]
+        column_matches = column_values .== group_value
 
-    # Keep only rows that match this column AND all previous columns
-    rows_matching_group .&= column_matches
-  end
+        # Keep only rows that match this column AND all previous columns
+        rows_matching_group .&= column_matches
+    end
 
-  # Return the subset of initial representatives that belong to this group
-  return initial_representatives[rows_matching_group, :]
+    # Return the subset of initial representatives that belong to this group
+    return initial_representatives[rows_matching_group, :]
 end
