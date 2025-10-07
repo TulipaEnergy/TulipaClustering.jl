@@ -162,6 +162,7 @@ function dummy_cluster!(
     connection;
     input_database_schema = "",
     input_profile_table_name = "profiles",
+    layout::ProfilesTableLayout = ProfilesTableLayout(),
     kwargs...,
 )
     table_name = if input_database_schema != ""
@@ -169,13 +170,14 @@ function dummy_cluster!(
     else
         input_profile_table_name
     end
+    timestep_col = layout.timestep
     period_duration = only([
         row.max_timestep for row in DuckDB.query(
             connection,
-            "SELECT MAX(timestep) AS max_timestep FROM $table_name",
+            "SELECT MAX($timestep_col) AS max_timestep FROM $table_name",
         )
     ])
-    cluster!(connection, period_duration, 1; kwargs...)
+    cluster!(connection, period_duration, 1; layout, kwargs...)
 end
 
 """
