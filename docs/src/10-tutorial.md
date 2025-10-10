@@ -54,7 +54,7 @@ nice_query("""
 """)
 ```
 
-And finally, we can use `nice_query` to filter the profiles and plot them. For example, here we filter and plot the profiles in the Netherlands (i.e., those starting with `NED_`):
+And finally, we can use `nice_query` to filter the profiles and plot them. For example, here we filter and plot the profiles in the Netherlands (i.e., those starting with `NED_`) and plot only a sample with the profiles for the first week of the year:
 
 ```@example tutorial
 using Plots
@@ -66,10 +66,11 @@ df = nice_query("""
     ORDER BY profile_name, timestep
 """)
 
+sample = 1:168
 plot(size=(800, 400))
 for group in groupby(df, :profile_name)
     name = group.profile_name[1]
-    plot!(group.timestep, group.value, label=name)
+    plot!(group.timestep[sample], group.value[sample], label=name)
 end
 plot!(xlabel="Timestep", ylabel="Value", title="Profiles in the Netherlands")
 ```
