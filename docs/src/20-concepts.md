@@ -18,7 +18,7 @@ The clustering process consists of:
    $$p_{j,k}, \qquad \text{where} \qquad j = 1,\dots,m, \quad k = 1,\dots,N/m.$$
 2. Compute `L = num_rps` representative periods
 
-   $$r_{j,\ell}, \qquad \text{where} \qquad j = 1,\dots,m, \qquad \ell = 1,\dots,L.$$
+   $$r_{j,\ell}, \qquad \text{where} \qquad j = 1,\dots,m, \quad \ell = 1,\dots,L.$$
 3. During computation of the representative periods, we obtained weight
    $w_{k,\ell}$ between the period $k$ and the representative period $\ell$,
    such that

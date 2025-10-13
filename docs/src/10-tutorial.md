@@ -121,7 +121,7 @@ nice_query("FROM profiles_rep_periods LIMIT 5")
 - `rep_periods_data` contains the general informations of the RPs,
 
 ```@example tutorial
-nice_query("FROM rep_periods_data LIMIT 5")
+nice_query("FROM rep_periods_data")
 ```
 
 - `rep_periods_mapping` containts the weights that are use to map the RPs to the original (or base) periods,
@@ -267,7 +267,7 @@ The first difference you may notice is that the representative periods (RPs) obt
 
 For more details on the comparison of clustering methods please refer to the [Scientific References](@ref scientific-refs) section.
 
-## Clustering by
+## Clustering by other columns
 
 `TulipaClustering.jl` clusters by default using the columns `year`, i.e., it will create representative periods for each year in the input data. The total number of representative periods will be `num_rps * number_of_years`. This is useful when the profiles have a strong seasonal component that changes from year to year.
 
@@ -320,7 +320,7 @@ Notice the column `hour` in the output above (instead of `timestep`).
 ## Extra Functions in High level API/DuckDB API
 
 The high-level API of TulipaClustering focuses on using TulipaClustering as part of the [Tulipa workflow](https://tulipaenergy.github.io/TulipaEnergyModel.jl/stable/).
-This API consists of three main functions: [`cluster!`](@ref), [`transform_wide_to_long!`](@ref), and [`dummy_cluster!`](@ref). These functions are designed to work with DuckDB connections and tables, making it easy to integrate clustering into your data processing pipeline. In the previous sections, we have already covered the usage of [`cluster!`](@ref) and [`transform_wide_to_long!`](@ref). In this section, we will explore the third function, [`dummy_cluster!`](@ref), which is useful for testing and debugging purposes.
+This API consists of three main functions: [`cluster!`](@ref), [`transform_wide_to_long!`](@ref), and [`dummy_cluster!`](@ref). These functions are designed to work with DuckDB connections and tables, making it easy to integrate clustering into your data processing pipeline. In the previous sections, we have already covered the usage of [`cluster!`](@ref) and [`transform_wide_to_long!`](@ref). In this section, we will explore the third function, [`dummy_cluster!`](@ref), which is useful for testing, debugging, and to prepare the data for TulipaEnergyModel without actually clustering the profiles.
 
 ### Dummy Clustering
 
