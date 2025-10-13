@@ -179,16 +179,20 @@ plot(plots..., layout=(2, 2), size=(800, 600))
 
 ## [Hull Clustering with Blended Representative Periods](@id hull_clustering)
 
-The function [`cluster!`](@ref) has several keyword arguments that can be used to customize the clustering process:
+The function [`cluster!`](@ref) has several keyword arguments that can be used to customize the clustering process. Alternatively, you can use the help mode in Julia REPL by typing `?cluster!` to see all the available keyword arguments and their descriptions. Here is a summary of the most important keyword arguments for this tutorial:
 
-```@example tutorial
-using InteractiveUtils # hide
-docstring = string(@doc cluster!) #hide
-docstring = match(r"\*\*Keyword arguments\*\*.*"s, docstring) #hide
-println(docstring.match) #hide
-```
-
-Alternatively, you can use the help mode in Julia REPL by typing `?cluster!` to see all the available keyword arguments and their descriptions.
+- `method` (default `:k_medoids`): clustering method to use `:k_means`, `:k_medoids`, `:convex_hull`, `:convex_hull_with_null`, or `:conical_hull`.
+- `distance` (default `Distances.Euclidean()`): semimetric used to measure distance between data points from the the package Distances.jl.
+- `weight_type` (default `:dirac`): the type of weights to find; possible values are:
+  - `:dirac`: each period is represented by exactly one representative
+    period (a one unit weight and the rest are zeros)
+  - `:convex`: each period is represented as a convex sum of the
+    representative periods (a sum with nonnegative weights adding into one)
+  - `:conical`: each period is represented as a conical sum of the
+    representative periods (a sum with nonnegative weights)
+  - `:conical_bounded`: each period is represented as a conical sum of the
+    representative periods (a sum with nonnegative weights) with the total
+    weight bounded from above by one.
 
 As you can see, there are several keyword arguments that can be combined to explore different clustering strategies. Our proposed method is the Hull Clustering with Blended Representative Periods, which can be activated by setting the following keyword arguments:
 
