@@ -48,8 +48,8 @@ finally `write_clustering_result_to_tables`.
   is dropped and the weights are rescaled accordingly; otherwise, clustering
   is done for `n_rp - 1` periods, and the last period is added as a special
   shorter representative period
-- `method` (default `:k_means``): clustering method to use, either `:k_means` and `:k_medoids`
-- `distance` (default `Distances.SqEuclidean()`): semimetric used to measure distance between data points.
+- `method` (default `:k_medoids`): clustering method to use `:k_means`, `:k_medoids`, `:convex_hull`, `:convex_hull_with_null`, or `:conical_hull`.
+- `distance` (default `Distances.Euclidean()`): semimetric used to measure distance between data points.
 - `initial_representatives` initial representatives that should be
     included in the clustering. The period column in the initial representatives
     should be 1-indexed and the key columns should be the same as in the clustering data.
@@ -59,7 +59,9 @@ finally `write_clustering_result_to_tables`.
   `timestep`, and `value` in in-memory DataFrames. It does not change the SQL input
   table schema, which must contain `profile_name`, `timestep`, and `value`. Weight
   fitting operates on matrices and does not use `layout`.
-- `weight_type` (default `:convex`): the type of weights to find; possible values are:
+- `weight_type` (default `:dirac`): the type of weights to find; possible values are:
+    - `:dirac`: each period is represented by exactly one representative
+        period (a one unit weight and the rest are zeros)
     - `:convex`: each period is represented as a convex sum of the
       representative periods (a sum with nonnegative weights adding into one)
     - `:conical`: each period is represented as a conical sum of the
@@ -81,11 +83,11 @@ function cluster!(
     input_profile_table_name = "profiles",
     database_schema = "",
     drop_incomplete_last_period::Bool = false,
-    method::Symbol = :k_means,
-    distance::SemiMetric = SqEuclidean(),
+    method::Symbol = :k_medoids,
+    distance::SemiMetric = Euclidean(),
     initial_representatives::AbstractDataFrame = DataFrame(),
     layout::ProfilesTableLayout = ProfilesTableLayout(),
-    weight_type::Symbol = :convex,
+    weight_type::Symbol = :dirac,
     tol::Float64 = 1e-2,
     clustering_kwargs = Dict(),
     weight_fitting_kwargs = Dict(),
@@ -160,6 +162,7 @@ function dummy_cluster!(
     connection;
     input_database_schema = "",
     input_profile_table_name = "profiles",
+    layout::ProfilesTableLayout = ProfilesTableLayout(),
     kwargs...,
 )
     table_name = if input_database_schema != ""
@@ -167,13 +170,14 @@ function dummy_cluster!(
     else
         input_profile_table_name
     end
+    timestep_col = layout.timestep
     period_duration = only([
         row.max_timestep for row in DuckDB.query(
             connection,
-            "SELECT MAX(timestep) AS max_timestep FROM $table_name",
+            "SELECT MAX($timestep_col) AS max_timestep FROM $table_name",
         )
     ])
-    cluster!(connection, period_duration, 1; kwargs...)
+    cluster!(connection, period_duration, 1; layout, kwargs...)
 end
 
 """

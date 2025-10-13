@@ -157,6 +157,8 @@ The arguments:
   - `clustering_matrix`: the matrix of raw clustering data
   - `rp_matrix`: the matrix of raw representative period data
   - `weight_type`: the type of weights to find; possible values are:
+      - `:dirac`: each period is represented by exactly one representative
+        period (a one unit weight and the rest are zeros)
       - `:convex`: each period is represented as a convex sum of the
         representative periods (a sum with nonnegative weights adding into one)
       - `:conical`: each period is represented as a conical sum of the
