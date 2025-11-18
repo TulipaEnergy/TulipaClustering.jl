@@ -94,7 +94,8 @@ function _validate_required_tables_and_columns!(
     end
 
     # Check required columns from the table in the connection
-    required_columns = String.([layout.profile_name, layout.timestep, layout.value])
+    required_columns =
+        String.([layout.year, layout.profile_name, layout.timestep, layout.value])
     for column in required_columns
         if !(column in columns_from_connection)
             push!(

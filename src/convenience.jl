@@ -25,10 +25,10 @@ using `period_duration` and `num_rps`. The resulting tables
 `rep_periods_data` are loaded into `connection` in the `database_schema`, if
 given, and enriched with `year` information.
 
-This function extracts the table (expecting columns `profile_name`, `timestep`, `value`),
+This function extracts the table (expecting columns `year`, `profile_name`, `timestep`, `value`),
 then calls [`split_into_periods!`](@ref),
 [`find_representative_periods`](@ref), [`fit_rep_period_weights!`](@ref), and
-finally `write_clustering_result_to_tables`.
+finally [`write_clustering_result_to_tables`](@ref).
 
 ## Arguments
 
