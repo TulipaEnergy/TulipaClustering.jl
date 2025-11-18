@@ -99,7 +99,6 @@ function cluster!(
         layout,
         initial_representatives,
     )
-    _check_layout_consistency_with_cols_to_groupby(layout)
 
     if input_database_schema != ""
         input_profile_table_name = "$input_database_schema.$input_profile_table_name"
@@ -244,21 +243,6 @@ function transform_wide_to_long!(
     )
 
     return
-end
-
-function _check_layout_consistency_with_cols_to_groupby(layout::ProfilesTableLayout)
-    all_fields = fieldnames(ProfilesTableLayout)
-    layout_fields = [getfield(layout, field) for field in all_fields]
-    for col in layout.cols_to_groupby
-        if !(col in layout_fields)
-            throw(
-                ArgumentError(
-                    "Column '$col' in 'cols_to_groupby' is not defined in the layout",
-                ),
-            )
-        end
-    end
-    return nothing
 end
 
 function _get_initial_representatives_for_group(

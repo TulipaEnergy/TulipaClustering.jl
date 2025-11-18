@@ -47,6 +47,15 @@ function validate_data!(
         end
     end
 
+    for (log_msg, validation_function, fail_fast) in
+        (("has valid layout", _validate_layout!, false),)
+        @debug log_msg
+        append!(error_messages, validation_function(layout))
+        if fail_fast && length(error_messages) > 0
+            break
+        end
+    end
+
     if length(error_messages) > 0
         throw(DataValidationException(error_messages))
     end
@@ -118,5 +127,39 @@ function _validate_required_tables_and_columns!(
         end
     end
 
+    return error_messages
+end
+
+function _validate_layout!(layout::ProfilesTableLayout)
+    error_messages = String[]
+    all_fields = fieldnames(ProfilesTableLayout)
+    layout_fields = [getfield(layout, field) for field in all_fields]
+
+    # Validate that the columns in cols_to_groupby exist in the layout
+    for col in layout.cols_to_groupby
+        if !(col in layout_fields)
+            push!(
+                error_messages,
+                "Column '$col' in 'cols_to_groupby' is not defined in the layout",
+            )
+        end
+    end
+    # Validate that the columns in cols_to_crossby exist in the layout
+    for col in layout.cols_to_crossby
+        if !(col in layout_fields)
+            push!(
+                error_messages,
+                "Column '$col' in 'cols_to_crossby' is not defined in the layout",
+            )
+        end
+    end
+    # Validate that the columns in cols_to_groupby and cols_to_crossby are disjoint
+    intersecting_cols = intersect(layout.cols_to_groupby, layout.cols_to_crossby)
+    if length(intersecting_cols) > 0
+        push!(
+            error_messages,
+            "Columns $(intersecting_cols) are present in both 'cols_to_groupby' and 'cols_to_crossby'. These should be disjoint.",
+        )
+    end
     return error_messages
 end
