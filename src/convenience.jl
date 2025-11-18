@@ -143,6 +143,7 @@ function cluster!(
     write_clustering_result_to_tables(
         connection,
         results_per_group,
+        metadata_per_group,
         num_rps;
         database_schema,
         layout,
