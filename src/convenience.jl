@@ -113,6 +113,10 @@ function cluster!(
 
     split_into_periods!(profiles; period_duration, layout)
     grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
+
+    grouped_profiles_data, metadata_per_group =
+        _update_period_numbers_using_crossby_cols!(grouped_profiles_data, layout)
+
     results_per_group = Dict(
         group_key => find_representative_periods(
             group,
@@ -270,4 +274,31 @@ function _get_initial_representatives_for_group(
 
     # Return the subset of initial representatives that belong to this group
     return initial_representatives[rows_matching_group, :]
+end
+
+function _update_period_numbers_using_crossby_cols!(
+    grouped_profiles_data::GroupedDataFrame,
+    layout::ProfilesTableLayout,
+)
+    metadata_per_group = Dict(
+        group_key => (
+            group_values = collect(group_key),
+            num_periods = maximum(group[!, layout.period]),
+            cross_values_list = [
+                NamedTuple(col => cross_group[1, col] for col in layout.cols_to_crossby) for cross_group in groupby(group, layout.cols_to_crossby)
+            ],
+        ) for (group_key, group) in pairs(grouped_profiles_data)
+    )
+    for (group_key, group) in pairs(grouped_profiles_data)
+        crossed_profiles_data = groupby(group, layout.cols_to_crossby)
+        num_periods = metadata_per_group[group_key].num_periods
+        for (cross_idx, cross_group) in enumerate(crossed_profiles_data)
+            cross_group[!, layout.period] .+= num_periods * (cross_idx - 1)
+        end
+    end
+    for col in layout.cols_to_crossby
+        select!(grouped_profiles_data, Not(col))
+    end
+
+    return grouped_profiles_data, metadata_per_group
 end
