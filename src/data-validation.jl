@@ -26,6 +26,7 @@ function validate_data!(
     table_names::Dict = Dict("profiles" => "profiles"),
     layout::ProfilesTableLayout = ProfilesTableLayout(),
     initial_representatives::AbstractDataFrame = DataFrame(),
+    fail_fast::Bool = false,
 )
     error_messages = String[]
 
