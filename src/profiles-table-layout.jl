@@ -19,6 +19,8 @@ a `key = value` list of parameters. Explicit keyword arguments take precedence.
 - `scenario::Symbol = :scenario`: The column name with the scenario of the profile.
 - `cols_to_groupby::Vector{Symbol} = [:year]`: The column names to group by when
   performing clustering on groups of profiles separately. If empty, no grouping is done.
+- `cols_to_crossby::Vector{Symbol} = []`: The column names to cross by when
+  performing clustering on profiles. If empty, no cross-column is done.
 
 """
 Base.@kwdef struct ProfilesTableLayout
@@ -29,6 +31,7 @@ Base.@kwdef struct ProfilesTableLayout
     year::Symbol = :year
     scenario::Symbol = :scenario
     cols_to_groupby::Vector{Symbol} = [year]
+    cols_to_crossby::Vector{Symbol} = []
 end
 
 # Using `@kwdef` defines a default constructor based on keywords
