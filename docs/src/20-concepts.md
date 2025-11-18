@@ -85,30 +85,30 @@ $d_{cos}(𝑎𝑥, 𝑏𝑦) = d_{cos}(𝑥, 𝑦) \quad \text{if} \quad 𝑎, �
 
 ![Cosine Distance](assets/cosine-distance.png)
 
-## Clustering Per or Across
+## Clustering Per or Cross
 
-The [`ProfilesTableLayout`](@ref) parameter in the function [`cluster!`](@ref) allows users to include `cols_to_groupby` for the clustering process. By default, all profiles will be clustered by the column `:year`, meaning that the representatives will be calculated per year. We recommend this approach because it is expected that renewable profiles will change over time due to advancements in technology. However, if the user prefers to have representative periods across multiple years, they simply need to provide an empty vector for `cols_to_groupby` in the [`ProfilesTableLayout`](@ref).
+The [`ProfilesTableLayout`](@ref) parameter in the function [`cluster!`](@ref) allows users to include `cols_to_groupby` for the clustering process. By default, all profiles will be clustered by the column `:year`, meaning that the representatives will be calculated per year. We recommend this approach because it is expected that renewable profiles will change over time due to advancements in technology. However, if the user prefers to have representative periods cross multiple years, they simply need to provide an empty vector for `cols_to_groupby` in the [`ProfilesTableLayout`](@ref).
 
-In addition, if the profiles to cluster have the column `:scenario` (or similar name), it can be added to the `cols_to_groupby` parameter in order to obtain representative periods per scenario. If the column is in the input profiles, but it is not included in the columns to group by, then by default the representative periods will be calculated across the scenario. In the following sections, we discuss more on each case.
+In addition, if the profiles to cluster have the column `:scenario` (or similar name), it can be added to the `cols_to_groupby` parameter in order to obtain representative periods per scenario. If the column is in the input profiles, but it is not included in the columns to group by, then by default the representative periods will be calculated cross the scenario. In the following sections, we discuss more on each case.
 
-### Per Scenario
+### Per-Scenario
 
-In this approach, representative periods are chosen separately for each scenario. This involves applying the steps of normalization, selection, and weight calculation to each scenario individually. As a result, each scenario has its own set of representative periods (RPs) that capture all periods within that scenario.
+In this approach, representative periods are chosen separately for each scenario. This involves applying the steps of selection and weight calculation to each scenario individually. As a result, each scenario has its own set of representative periods (RPs) that capture all periods within that scenario.
 
-The following figure illustrates the concept of scenario-specific representative periods. For instance, the high scenario has its own representative periods labeled RPs High 1 and High 2, the medium scenario has RPs Medium 1 and Medium 2, and the low scenario features RPs Low 1 and Low 2. These representative periods are used to approximate the original periods within each scenario.
+The following figure illustrates the concept of scenario-specific representative periods. For instance, the high scenario has its own representative periods, labeled RPs High 1 and High 2; the medium scenario has RPs Medium 1 and Medium 2; and the low scenario features RPs Low 1 and Low 2. These representative periods are used to approximate the original periods within each scenario.
 
 ![per-scenario](assets/per-scenario.png)
 
-One advantage of this approach is that the clustering task is performed on smaller, more homogeneous sets. However, this separation also means that similar patterns across different scenarios may be ignored. As a result, the union of all representatives, may include redundant or highly similar periods that increase the model size without adding new information.
+One advantage of this approach is that the clustering task is performed on smaller, more homogeneous sets. However, this separation also means that similar patterns across different scenarios may be ignored. As a result, the union of all representatives may include redundant or highly similar periods that increase the model size without adding new information.
 
-### Across Scenarios
+### Cross-Scenarios
 
-To better capture the overall structure of the full scenario space, we propose to calculate the representative across scenarios. Here, representative periods are selected from the combined set of periods across all scenarios, resulting in a single, scenario independent set of RPs. This approach allows us to identify a smaller set of representative periods that generalizes well across different scenarios, reducing redundancy and potentially improving model compactness.
+To better capture the overall structure of the whole scenario space, we propose calculating representative cross-scenarios. Here, representative periods are selected from the combined set of periods across all scenarios, resulting in a single, scenario-independent set of RPs. This approach enables us to identify a smaller set of representative periods that generalize well across different scenarios, thereby reducing redundancy and potentially enhancing model compactness.
 
-The key idea is to perform clustering on the full joint set of scenarios. The selection process thus considers the joint variability in demand and availability across all scenarios. This enables the model to reuse the same representative periods in multiple scenarios, rather than duplicating similar patterns. In this approach, the weights reflect how many original periods across all scenarios are best represented by each RP.
+The key idea is to perform clustering on the complete joint set of scenarios. The selection process thus considers the joint variability in demand and availability across all scenarios. This enables the model to reuse the same representative periods in multiple scenarios, rather than duplicating similar patterns. In this approach, the weights reflect how many original periods cross all scenarios are best represented by each RP.
 
 The following figure illustrates the concept of representative periods across scenarios. Here, representative periods 1 to 6 are selected from the combined set of periods across all scenarios. These representative periods are then used to approximate the original periods in each scenario.
 
-![across-scenarios](assets/across-scenarios.png)
+![cross-scenarios](assets/cross-scenarios.png)
 
-An advantage of this approach is its ability to minimize redundancy by recognizing similarities between periods in different scenarios. This can lead to a more efficient representation of uncertainty, especially when common temporal patterns exist across the scenario set. However, it also requires more computational effort during the selection phase.
+An advantage of this approach is its ability to minimize redundancy by recognizing similarities between periods in different scenarios. This can lead to a more efficient representation of uncertainty, primarily when common temporal patterns exist across the scenario set. However, it also requires more computational effort during the selection phase.
