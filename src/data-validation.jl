@@ -30,8 +30,11 @@ function validate_data!(
 )
     error_messages = String[]
 
-    for (log_msg, validation_function, fail_fast) in
-        (("has required tables and columns", _validate_required_tables_and_columns!, true),)
+    for (log_msg, validation_function, fail_fast) in ((
+        "has required tables and columns",
+        _validate_required_tables_and_columns!,
+        fail_fast,
+    ),)
         @debug log_msg
         append!(
             error_messages,
@@ -49,7 +52,7 @@ function validate_data!(
     end
 
     for (log_msg, validation_function, fail_fast) in
-        (("has valid layout", _validate_layout!, false),)
+        (("has valid layout", _validate_layout!, fail_fast),)
         @debug log_msg
         append!(error_messages, validation_function(layout))
         if fail_fast && length(error_messages) > 0
