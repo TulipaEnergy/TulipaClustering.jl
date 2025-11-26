@@ -90,12 +90,30 @@ function write_clustering_result_to_tables(
     return nothing
 end
 
+"""
+    write_clustering_result_to_tables(
+    connection,
+    results_per_group::Dict{
+        DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
+        TulipaClustering.ClusteringResult,
+    },
+    metadata_per_group::Dict,
+    n_rp::Int;
+    database_schema = "",
+    layout::ProfilesTableLayout = ProfilesTableLayout(),
+)
+
+Writes clustering results from different groups into DuckDB tables in `connection`.
+The results from different groups are combined into single tables, adjusting
+the representative period indices to ensure uniqueness across groups.
+"""
 function write_clustering_result_to_tables(
     connection,
     results_per_group::Dict{
         DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
         TulipaClustering.ClusteringResult,
     },
+    metadata_per_group::Dict,
     n_rp::Int;
     database_schema = "",
     layout::ProfilesTableLayout = ProfilesTableLayout(),
@@ -112,11 +130,16 @@ function write_clustering_result_to_tables(
     end
 
     combined_profiles = _combine_group_profiles(results_per_group, n_rp)
-    combined_weight_matrix =
-        _combine_weight_matrices(results_per_group, n_rp; layout = layout)
+    combined_weight_matrix = _combine_weight_matrices(
+        results_per_group,
+        metadata_per_group,
+        n_rp;
+        layout = layout,
+    )
     combined_rep_periods_data =
         _combine_rep_periods_data(results_per_group, n_rp; layout = layout)
-    combined_timeframe_data = _combine_timeframe_data(results_per_group; layout = layout)
+    combined_timeframe_data =
+        _combine_timeframe_data(results_per_group, metadata_per_group; layout = layout)
 
     # Create the profiles_rep_periods table
     DuckDB.register_data_frame(connection, combined_profiles, "t_profiles_rep_periods")
@@ -178,27 +201,46 @@ end
 """
 A function to combine weight matrices from different groups.
 For group index g, new_rep_period = old_rep_period + offset given by _rep_period_offset(n_rp, g).
-In addition, the group key columns are added to the resulting dataframe.
+In addition, the group key columns and cross column values are added to the resulting dataframe.
+The period column is updated to reflect the original period within each cross group.
 """
 function _combine_weight_matrices(
     results::Dict{
         DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
         TulipaClustering.ClusteringResult,
     },
+    metadata_per_group::Dict,
     n_rp::Int;
     layout = ProfilesTableLayout(),
 )
     weight_matrices_dfs = Vector{DataFrame}(undef, length(results))
-    year_col = layout.year
 
     for (g, (group_key, group_result)) in enumerate(pairs(results))
         df = weight_matrix_to_df(group_result.weight_matrix)
         df.rep_period .+= _rep_period_offset(n_rp, g)
 
+        # Get metadata for this group
+        num_periods = metadata_per_group[group_key].num_periods
+        cross_values_list = metadata_per_group[group_key].cross_values_list
+
+        # For each row, calculate which cross group it belongs to and original period
+        df[!, :_cross_idx] = [div(p - 1, num_periods) + 1 for p in df.period]
+        df[!, :_original_period] = [mod(p - 1, num_periods) + 1 for p in df.period]
+
+        # Add cross column values
+        for col in layout.cols_to_crossby
+            df[!, col] = [cross_values_list[idx][col] for idx in df._cross_idx]
+        end
+
+        # Add group key columns
         for col in keys(group_key)
             col_value = group_key[col]
             insertcols!(df, 1, col => fill(col_value, nrow(df)))
         end
+
+        # Update period to original values if needed
+        df.period = df._original_period
+        select!(df, Not([:_cross_idx, :_original_period]))
 
         weight_matrices_dfs[g] = df
     end
@@ -206,7 +248,10 @@ function _combine_weight_matrices(
     # Filter out empty DataFrames for cleaner concatenation
     non_empty_dfs = filter(!isempty, weight_matrices_dfs)
 
-    return isempty(non_empty_dfs) ? DataFrame() : vcat(non_empty_dfs...; cols = :union)
+    combined_df =
+        isempty(non_empty_dfs) ? DataFrame() : vcat(non_empty_dfs...; cols = :union)
+
+    return combined_df
 end
 
 """
@@ -223,7 +268,6 @@ function _combine_rep_periods_data(
     layout = ProfilesTableLayout(),
 )
     rep_periods_data_dfs = Vector{DataFrame}(undef, length(results))
-    year_col = layout.year
 
     for (g, (group_key, group_result)) in enumerate(pairs(results))
         aux = group_result.auxiliary_data
@@ -255,30 +299,62 @@ end
 """
 A function to combine timeframe_data from different groups.
 Creates timeframe data with period information for each group.
-In addition, the group key columns are added to the resulting dataframe.
+The year column (specified by layout.year) is extracted from either group keys or cross column metadata.
+For each unique year value, a row is created for each period with its duration information.
 """
 function _combine_timeframe_data(
     results::Dict{
         DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
         TulipaClustering.ClusteringResult,
-    };
+    },
+    metadata_per_group::Dict,
+    ;
     layout = ProfilesTableLayout(),
 )
     timeframe_data_dfs = Vector{DataFrame}(undef, length(results))
     year_col = layout.year
+    period_col = layout.period
 
     for (g, (group_key, group_result)) in enumerate(pairs(results))
+        # Find year values from metadata - check group_key first, then cross_columns
+        year_values = []
+        if year_col in keys(group_key)
+            push!(year_values, group_key[year_col])
+        else
+            # Collect all unique year values from cross columns
+            cross_values_list = metadata_per_group[group_key].cross_values_list
+            for cross_values in cross_values_list
+                if year_col in keys(cross_values)
+                    push!(year_values, cross_values[year_col])
+                end
+            end
+        end
+        year_values = unique(year_values)
+
         aux = group_result.auxiliary_data
-        num_periods = size(group_result.weight_matrix, 1)
+        num_periods = metadata_per_group[group_key].num_periods
         period_duration = fill(aux.period_duration, num_periods)
         period_duration[end] = aux.last_period_duration
 
-        df = DataFrame(; period = 1:num_periods, num_timesteps = period_duration)
-
-        for col in keys(group_key)
-            col_value = group_key[col]
-            insertcols!(df, 1, col => fill(col_value, nrow(df)))
+        # Create a row for each year value
+        df_rows = DataFrame[]
+        if isempty(year_values)
+            # No grouping by year - create a simple timeframe without year column
+            df_row =
+                DataFrame(; period_col => 1:num_periods, num_timesteps = period_duration)
+            push!(df_rows, df_row)
+        else
+            for year_value in year_values
+                df_row = DataFrame(;
+                    year_col => year_value,
+                    period_col => 1:num_periods,
+                    num_timesteps = period_duration,
+                )
+                push!(df_rows, df_row)
+            end
         end
+
+        df = isempty(df_rows) ? DataFrame() : vcat(df_rows...; cols = :union)
 
         timeframe_data_dfs[g] = df
     end
@@ -286,5 +362,8 @@ function _combine_timeframe_data(
     # Filter out empty DataFrames for cleaner concatenation
     non_empty_dfs = filter(!isempty, timeframe_data_dfs)
 
-    return isempty(non_empty_dfs) ? DataFrame() : vcat(non_empty_dfs...; cols = :union)
+    combined_df =
+        isempty(non_empty_dfs) ? DataFrame() : vcat(non_empty_dfs...; cols = :union)
+
+    return unique(combined_df)
 end

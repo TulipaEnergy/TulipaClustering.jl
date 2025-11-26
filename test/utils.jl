@@ -1,8 +1,9 @@
 function _new_connection(;
-    profile_names = ["name001", "name002"],
+    year::Int = 1982,
+    profile_names::Vector{String} = ["name001", "name002"],
     num_timesteps::Int = 24,
     database_schema = "",
-    layout = TulipaClustering.ProfilesTableLayout(),
+    layout::TulipaClustering.ProfilesTableLayout = TulipaClustering.ProfilesTableLayout(),
 )
     @assert length(profile_names) > 0
     @assert num_timesteps ≥ 1
@@ -17,6 +18,7 @@ function _new_connection(;
         connection,
         "CREATE TABLE $(prefix)profiles AS
         SELECT
+          $year AS $(layout.year),
           $(layout.profile_name) AS $(layout.profile_name),
           i AS $(layout.timestep),
           i * 3.14 AS $(layout.value),
@@ -31,12 +33,12 @@ function _new_connection(;
 end
 
 function _new_connection_multi_scenario_year(;
-    profile_names = ["name001", "name002"],
+    profile_names::Vector{String} = ["name001", "name002"],
     num_timesteps::Int = 24,
-    years = [2020, 2021],
-    scenarios = [1, 2],
+    years::Vector{Int} = [2020, 2021],
+    scenarios::Vector{Int} = [1, 2],
     database_schema = "",
-    layout = TulipaClustering.ProfilesTableLayout(),
+    layout::TulipaClustering.ProfilesTableLayout = TulipaClustering.ProfilesTableLayout(),
 )
     @assert length(profile_names) > 0
     @assert num_timesteps ≥ 1
@@ -58,11 +60,11 @@ function _new_connection_multi_scenario_year(;
         connection,
         "CREATE TABLE $(prefix)profiles AS
         SELECT
+          $(layout.year) AS $(layout.year),
+          $(layout.scenario) AS $(layout.scenario),
           $(layout.profile_name) AS $(layout.profile_name),
           i AS $(layout.timestep),
           (i * 3.14 + $(layout.year) * 0.1 + $(layout.scenario) * 0.01) AS $(layout.value),
-          $(layout.year) AS $(layout.year),
-          $(layout.scenario) AS $(layout.scenario),
         FROM generate_series(1, $num_timesteps) AS s(i)
         CROSS JOIN (
           SELECT unnest([$profile_names_str]) AS $(layout.profile_name),

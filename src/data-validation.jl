@@ -26,11 +26,15 @@ function validate_data!(
     table_names::Dict = Dict("profiles" => "profiles"),
     layout::ProfilesTableLayout = ProfilesTableLayout(),
     initial_representatives::AbstractDataFrame = DataFrame(),
+    fail_fast::Bool = false,
 )
     error_messages = String[]
 
-    for (log_msg, validation_function, fail_fast) in
-        (("has required tables and columns", _validate_required_tables_and_columns!, true),)
+    for (log_msg, validation_function, fail_fast) in ((
+        "has required tables and columns",
+        _validate_required_tables_and_columns!,
+        fail_fast,
+    ),)
         @debug log_msg
         append!(
             error_messages,
@@ -42,6 +46,15 @@ function validate_data!(
                 initial_representatives,
             ),
         )
+        if fail_fast && length(error_messages) > 0
+            break
+        end
+    end
+
+    for (log_msg, validation_function, fail_fast) in
+        (("has valid layout", _validate_layout!, fail_fast),)
+        @debug log_msg
+        append!(error_messages, validation_function(layout))
         if fail_fast && length(error_messages) > 0
             break
         end
@@ -94,7 +107,8 @@ function _validate_required_tables_and_columns!(
     end
 
     # Check required columns from the table in the connection
-    required_columns = String.([layout.profile_name, layout.timestep, layout.value])
+    required_columns =
+        String.([layout.year, layout.profile_name, layout.timestep, layout.value])
     for column in required_columns
         if !(column in columns_from_connection)
             push!(
@@ -117,5 +131,39 @@ function _validate_required_tables_and_columns!(
         end
     end
 
+    return error_messages
+end
+
+function _validate_layout!(layout::ProfilesTableLayout)
+    error_messages = String[]
+    all_fields = fieldnames(ProfilesTableLayout)
+    layout_fields = [getfield(layout, field) for field in all_fields]
+
+    # Validate that the columns in cols_to_groupby exist in the layout
+    for col in layout.cols_to_groupby
+        if !(col in layout_fields)
+            push!(
+                error_messages,
+                "Column '$col' in 'cols_to_groupby' is not defined in the layout",
+            )
+        end
+    end
+    # Validate that the columns in cols_to_crossby exist in the layout
+    for col in layout.cols_to_crossby
+        if !(col in layout_fields)
+            push!(
+                error_messages,
+                "Column '$col' in 'cols_to_crossby' is not defined in the layout",
+            )
+        end
+    end
+    # Validate that the columns in cols_to_groupby and cols_to_crossby are disjoint
+    intersecting_cols = intersect(layout.cols_to_groupby, layout.cols_to_crossby)
+    if length(intersecting_cols) > 0
+        push!(
+            error_messages,
+            "Columns $(intersecting_cols) are present in both 'cols_to_groupby' and 'cols_to_crossby'. These should be disjoint.",
+        )
+    end
     return error_messages
 end

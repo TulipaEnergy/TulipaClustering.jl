@@ -25,10 +25,10 @@ using `period_duration` and `num_rps`. The resulting tables
 `rep_periods_data` are loaded into `connection` in the `database_schema`, if
 given, and enriched with `year` information.
 
-This function extracts the table (expecting columns `profile_name`, `timestep`, `value`),
+This function extracts the table (expecting columns `year`, `profile_name`, `timestep`, `value`),
 then calls [`split_into_periods!`](@ref),
 [`find_representative_periods`](@ref), [`fit_rep_period_weights!`](@ref), and
-finally `write_clustering_result_to_tables`.
+finally [`write_clustering_result_to_tables`](@ref).
 
 ## Arguments
 
@@ -99,7 +99,6 @@ function cluster!(
         layout,
         initial_representatives,
     )
-    _check_layout_consistency_with_cols_to_groupby(layout)
 
     if input_database_schema != ""
         input_profile_table_name = "$input_database_schema.$input_profile_table_name"
@@ -114,6 +113,10 @@ function cluster!(
 
     split_into_periods!(profiles; period_duration, layout)
     grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
+
+    grouped_profiles_data, metadata_per_group =
+        _update_period_numbers_using_crossby_cols!(grouped_profiles_data, layout)
+
     results_per_group = Dict(
         group_key => find_representative_periods(
             group,
@@ -140,6 +143,7 @@ function cluster!(
     write_clustering_result_to_tables(
         connection,
         results_per_group,
+        metadata_per_group,
         num_rps;
         database_schema,
         layout,
@@ -246,21 +250,26 @@ function transform_wide_to_long!(
     return
 end
 
-function _check_layout_consistency_with_cols_to_groupby(layout::ProfilesTableLayout)
-    all_fields = fieldnames(ProfilesTableLayout)
-    layout_fields = [getfield(layout, field) for field in all_fields]
-    for col in layout.cols_to_groupby
-        if !(col in layout_fields)
-            throw(
-                ArgumentError(
-                    "Column '$col' in 'cols_to_groupby' is not defined in the layout",
-                ),
-            )
-        end
-    end
-    return nothing
-end
+"""
+    _get_initial_representatives_for_group(
+        initial_representatives::AbstractDataFrame,
+        group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
+    )
 
+Get the initial representatives for a specific group from a grouped DataFrame.
+
+# Arguments
+- `initial_representatives::AbstractDataFrame`: A DataFrame containing the initial representative data points.
+- `group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}}`: A key identifying a specific group within a grouped DataFrame.
+
+# Returns
+The subset of `initial_representatives` that corresponds to the specified `group_key`.
+
+# Description
+This is an internal helper function that extracts the initial representative data points
+for a particular group identified by its group key. It is typically used during the
+initialization phase of clustering operations on grouped data.
+"""
 function _get_initial_representatives_for_group(
     initial_representatives::AbstractDataFrame,
     group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
@@ -286,4 +295,60 @@ function _get_initial_representatives_for_group(
 
     # Return the subset of initial representatives that belong to this group
     return initial_representatives[rows_matching_group, :]
+end
+
+"""
+    _update_period_numbers_using_crossby_cols!(grouped_profiles_data, layout)
+
+Update period numbers in grouped profile data by creating sequential periods across groups
+defined by `cols_to_crossby`.
+
+# Arguments
+- `grouped_profiles_data::GroupedDataFrame`: A grouped DataFrame containing profile data
+- `layout::ProfilesTableLayout`: Layout specification containing:
+  - `period`: Column name for period numbers
+  - `cols_to_crossby`: Column names used to cross/combine groups
+
+# Returns
+- `grouped_profiles_data`: Modified GroupedDataFrame with updated period numbers and crossby columns removed
+- `metadata_per_group`: Dictionary containing metadata for each group with keys:
+  - `group_values`: Values identifying the group
+  - `num_periods`: Maximum period number in the group
+  - `cross_values_list`: List of NamedTuples containing crossby column values for each cross group
+
+# Details
+For each group in the grouped data, this function:
+1. Creates subgroups based on `cols_to_crossby` columns
+2. Adjusts period numbers so that each subgroup has sequential, non-overlapping periods
+3. Period numbers for subgroup `i` are offset by `num_periods * (i - 1)`
+4. Removes the `cols_to_crossby` columns from the final result
+
+# Modifications in Place
+Modifies `grouped_profiles_data` in place by updating period numbers and removing crossby columns.
+"""
+function _update_period_numbers_using_crossby_cols!(
+    grouped_profiles_data::GroupedDataFrame,
+    layout::ProfilesTableLayout,
+)
+    metadata_per_group = Dict(
+        group_key => (
+            group_values = collect(group_key),
+            num_periods = maximum(group[!, layout.period]),
+            cross_values_list = [
+                NamedTuple(col => cross_group[1, col] for col in layout.cols_to_crossby) for cross_group in groupby(group, layout.cols_to_crossby)
+            ],
+        ) for (group_key, group) in pairs(grouped_profiles_data)
+    )
+    for (group_key, group) in pairs(grouped_profiles_data)
+        crossed_profiles_data = groupby(group, layout.cols_to_crossby)
+        num_periods = metadata_per_group[group_key].num_periods
+        for (cross_idx, cross_group) in enumerate(crossed_profiles_data)
+            cross_group[!, layout.period] .+= num_periods * (cross_idx - 1)
+        end
+    end
+    for col in layout.cols_to_crossby
+        select!(grouped_profiles_data, Not(col))
+    end
+
+    return grouped_profiles_data, metadata_per_group
 end
