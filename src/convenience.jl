@@ -250,6 +250,26 @@ function transform_wide_to_long!(
     return
 end
 
+"""
+    _get_initial_representatives_for_group(
+        initial_representatives::AbstractDataFrame,
+        group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
+    )
+
+Get the initial representatives for a specific group from a grouped DataFrame.
+
+# Arguments
+- `initial_representatives::AbstractDataFrame`: A DataFrame containing the initial representative data points.
+- `group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}}`: A key identifying a specific group within a grouped DataFrame.
+
+# Returns
+The subset of `initial_representatives` that corresponds to the specified `group_key`.
+
+# Description
+This is an internal helper function that extracts the initial representative data points
+for a particular group identified by its group key. It is typically used during the
+initialization phase of clustering operations on grouped data.
+"""
 function _get_initial_representatives_for_group(
     initial_representatives::AbstractDataFrame,
     group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
@@ -277,6 +297,35 @@ function _get_initial_representatives_for_group(
     return initial_representatives[rows_matching_group, :]
 end
 
+"""
+    _update_period_numbers_using_crossby_cols!(grouped_profiles_data, layout)
+
+Update period numbers in grouped profile data by creating sequential periods across groups
+defined by `cols_to_crossby`.
+
+# Arguments
+- `grouped_profiles_data::GroupedDataFrame`: A grouped DataFrame containing profile data
+- `layout::ProfilesTableLayout`: Layout specification containing:
+  - `period`: Column name for period numbers
+  - `cols_to_crossby`: Column names used to cross/combine groups
+
+# Returns
+- `grouped_profiles_data`: Modified GroupedDataFrame with updated period numbers and crossby columns removed
+- `metadata_per_group`: Dictionary containing metadata for each group with keys:
+  - `group_values`: Values identifying the group
+  - `num_periods`: Maximum period number in the group
+  - `cross_values_list`: List of NamedTuples containing crossby column values for each cross group
+
+# Details
+For each group in the grouped data, this function:
+1. Creates subgroups based on `cols_to_crossby` columns
+2. Adjusts period numbers so that each subgroup has sequential, non-overlapping periods
+3. Period numbers for subgroup `i` are offset by `num_periods * (i - 1)`
+4. Removes the `cols_to_crossby` columns from the final result
+
+# Modifications in Place
+Modifies `grouped_profiles_data` in place by updating period numbers and removing crossby columns.
+"""
 function _update_period_numbers_using_crossby_cols!(
     grouped_profiles_data::GroupedDataFrame,
     layout::ProfilesTableLayout,
