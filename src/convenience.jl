@@ -127,6 +127,7 @@ function cluster!(
             initial_representatives = _get_initial_representatives_for_group(
                 initial_representatives,
                 group_key,
+                layout,
             ),
             layout,
             clustering_kwargs...,
@@ -273,6 +274,7 @@ initialization phase of clustering operations on grouped data.
 function _get_initial_representatives_for_group(
     initial_representatives::AbstractDataFrame,
     group_key::DataFrames.GroupKey{GroupedDataFrame{DataFrame}},
+    layout::ProfilesTableLayout,
 )
     # Return empty DataFrame if no initial representatives provided
     if isempty(initial_representatives)
@@ -294,7 +296,35 @@ function _get_initial_representatives_for_group(
     end
 
     # Return the subset of initial representatives that belong to this group
-    return initial_representatives[rows_matching_group, :]
+    initial_representatives_per_group = initial_representatives[rows_matching_group, :]
+
+    if isempty(initial_representatives_per_group)
+        return DataFrame()
+    end
+
+    if isempty(layout.cols_to_crossby)
+        return initial_representatives_per_group
+    end
+
+    period_col = layout.period
+    crossed_initial_representatives =
+        groupby(initial_representatives_per_group, layout.cols_to_crossby)
+    num_initial_periods = maximum(initial_representatives_per_group[!, period_col])
+    for (cross_idx, cross_group) in enumerate(crossed_initial_representatives)
+        cross_group[!, period_col] .+= num_initial_periods * (cross_idx - 1)
+    end
+    for col in layout.cols_to_crossby
+        select!(initial_representatives_per_group, Not(col))
+    end
+
+    front_columns = [period_col, layout.cols_to_groupby...]
+    remaining_columns = [
+        col for
+        col in propertynames(initial_representatives_per_group) if col ∉ front_columns
+    ]
+    select!(initial_representatives_per_group, front_columns..., remaining_columns...)
+
+    return initial_representatives_per_group
 end
 
 """
