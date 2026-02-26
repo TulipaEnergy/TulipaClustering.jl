@@ -609,6 +609,7 @@ function greedy_convex_hull(
     distance::SemiMetric,
     initial_indices::Union{Vector{Int}, Nothing} = nothing,
     mean_vector::Union{Vector{Float64}, Nothing} = nothing,
+    kwargs...,
 )
     # First resolve the points that are already in the hull given via `initial_indices`
     if initial_indices ≡ nothing
@@ -628,6 +629,10 @@ function greedy_convex_hull(
     hull_indices = initial_indices
     distances_cache = Dict{Int, Float64}()  # store previously computed distances
     starting_index = length(initial_indices) + 1
+
+    # unpack kwargs
+    allowed_kwargs = (:niters, :tol, :learning_rate, :adaptive_grad)
+    filtered_kwargs = (; (k => kwargs[k] for k in allowed_kwargs if haskey(kwargs, k))...)
 
     for _ in starting_index:n_points
         # Find the point that is the furthest away from the current hull
@@ -654,6 +659,7 @@ function greedy_convex_hull(
                     x;
                     subgradient,
                     projection = project_onto_simplex,
+                    filtered_kwargs...,
                 )
                 projected_target = hull_matrix * x
                 d = distance(projected_target, target_vector)

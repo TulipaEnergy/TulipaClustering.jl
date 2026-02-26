@@ -298,6 +298,7 @@ function _compute_representatives_from_matrix(
             initial_indices = initial_indices,
             n_points = n_rp,
             distance,
+            kwargs...,
         )
 
         # Reinterpret the results
@@ -333,6 +334,7 @@ function _compute_representatives_from_matrix(
             n_points = n_rp + 1,
             distance,
             initial_indices = collect(1:(i_rp + 1)),
+            kwargs...,
         )
 
         # Remove null from the beginning and shift all indices by one
@@ -375,6 +377,7 @@ function _compute_representatives_from_matrix(
             distance,
             mean_vector = normal_vector,
             initial_indices = initial_indices,
+            kwargs...,
         )
 
         # Reinterpret the results
