@@ -413,7 +413,7 @@ end
                 clustering_data,
                 2;
                 method = :convex_hull,
-                clustering_kwargs = Dict(:heuristic_distance => false),
+                heuristic_distance = false,
             )
             clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
         end
@@ -1155,7 +1155,7 @@ end
                 2;
                 method = :convex_hull,
                 initial_representatives = representatives,
-                clustering_kwargs = Dict(:heuristic_distance => false),
+                heuristic_distance = false,
             )
 
             (
@@ -1225,7 +1225,7 @@ end
                 2;
                 method = :convex_hull_with_null,
                 initial_representatives = representatives,
-                clustering_kwargs = Dict(:heuristic_distance => false),
+                heuristic_distance = false,
             )
 
             clustering_result.profiles[
@@ -1286,7 +1286,7 @@ end
                 2;
                 method = :convex_hull_with_null,
                 initial_representatives = representatives,
-                clustering_kwargs = Dict(:heuristic_distance => false),
+                heuristic_distance = false,
             )
 
             clustering_result.profiles[
