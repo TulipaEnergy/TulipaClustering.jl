@@ -401,6 +401,23 @@ end
             clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
         end
     end
+    @testset "Make sure that convex hull clustering finds the hull when selecting heuristic_distance = false" begin
+        @test begin
+            clustering_data = DataFrame([
+                :period => repeat(1:2; inner = 4),
+                :timestep => repeat(1:2; inner = 2, outer = 2),
+                :technology => repeat(["Solar", "Nuclear"], 4),
+                :value => 5:12,
+            ])
+            clustering_result = find_representative_periods(
+                clustering_data,
+                2;
+                method = :convex_hull,
+                heuristic_distance = false,
+            )
+            clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
+        end
+    end
 
     @testset "Convex hull works with custom layout" begin
         @test begin
@@ -1117,6 +1134,46 @@ end
         end
     end
 
+    @testset "Convex hull with one initial representative picks correct initial and second representative when heuristic_distance = false" begin
+        @test begin
+            clustering_data = DataFrame([
+                :period => repeat(1:3; inner = 4),
+                :timestep => repeat(1:2; inner = 2, outer = 3),
+                :technology => repeat(["Solar", "Nuclear"], 6),
+                :value => repeat(1:2:12; inner = 2),
+            ])
+
+            representatives = DataFrame([
+                :period => repeat([1]; inner = 4),
+                :timestep => repeat(1:2; inner = 2),
+                :technology => repeat(["Nuclear", "Solar"], 2),
+                :value => [11, 11, 13, 13],
+            ])
+
+            clustering_result = find_representative_periods(
+                clustering_data,
+                2;
+                method = :convex_hull,
+                initial_representatives = representatives,
+                heuristic_distance = false,
+            )
+
+            (
+                    clustering_result.profiles[
+                        clustering_result.profiles.rep_period .== 1,
+                        :value,
+                    ] == [11.0, 11.0, 13.0, 13.0]
+                ) &&
+                (
+                    clustering_result.profiles[
+                        clustering_result.profiles.rep_period .== 2,
+                        :value,
+                    ] == [1.0, 1.0, 3.0, 3.0]
+                ) &&
+                (clustering_result.weight_matrix == [0.0 1.0; 0.0 1.0; 1.0 0.0])
+        end
+    end
+
     @testset "Convex hull with null with one initial representative picks correct initial and second representative" begin
         @test begin
             clustering_data = DataFrame([
@@ -1147,6 +1204,37 @@ end
         end
     end
 
+    @testset "Convex hull with null with one initial representative picks correct initial and second representative when heuristic_distance = false" begin
+        @test begin
+            clustering_data = DataFrame([
+                :period => repeat(1:3; inner = 4),
+                :timestep => repeat(1:2; inner = 2, outer = 3),
+                :technology => repeat(["Solar", "Nuclear"], 6),
+                :value => repeat(1:2:12; inner = 2),
+            ])
+
+            representatives = DataFrame([
+                :period => repeat([1]; inner = 4),
+                :timestep => repeat(1:2; inner = 2),
+                :technology => repeat(["Nuclear", "Solar"], 2),
+                :value => [11, 11, 13, 13],
+            ])
+
+            clustering_result = find_representative_periods(
+                clustering_data,
+                2;
+                method = :convex_hull_with_null,
+                initial_representatives = representatives,
+                heuristic_distance = false,
+            )
+
+            clustering_result.profiles[
+                clustering_result.profiles.rep_period .== 1,
+                :value,
+            ] == [11.0, 11.0, 13.0, 13.0]
+        end
+    end
+
     @testset "Conical hull with one initial representative picks correct initial and second representative" begin
         @test begin
             clustering_data = DataFrame([
@@ -1168,6 +1256,37 @@ end
                 2;
                 method = :convex_hull_with_null,
                 initial_representatives = representatives,
+            )
+
+            clustering_result.profiles[
+                clustering_result.profiles.rep_period .== 1,
+                :value,
+            ] == [11.0, 11.0, 13.0, 13.0]
+        end
+    end
+
+    @testset "Conical hull with one initial representative picks correct initial and second representative when heuristic_distance = false" begin
+        @test begin
+            clustering_data = DataFrame([
+                :period => repeat(1:3; inner = 4),
+                :timestep => repeat(1:2; inner = 2, outer = 3),
+                :technology => repeat(["Solar", "Nuclear"], 6),
+                :value => repeat(1:2:12; inner = 2),
+            ])
+
+            representatives = DataFrame([
+                :period => repeat([1]; inner = 4),
+                :timestep => repeat(1:2; inner = 2),
+                :technology => repeat(["Nuclear", "Solar"], 2),
+                :value => [11, 11, 13, 13],
+            ])
+
+            clustering_result = find_representative_periods(
+                clustering_data,
+                2;
+                method = :convex_hull_with_null,
+                initial_representatives = representatives,
+                heuristic_distance = false,
             )
 
             clustering_result.profiles[
