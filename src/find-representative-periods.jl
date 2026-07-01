@@ -372,11 +372,6 @@ function _compute_representatives_from_matrix(
     return clustering_matrix, rp_matrix
 end
 
-function _assign_periods(distance::SemiMetric, clustering_matrix, rp_matrix)
-    distance_matrix = pairwise(distance, rp_matrix, clustering_matrix; dims = 2)
-    return [argmin(view(distance_matrix, :, p)) for p in axes(distance_matrix, 2)]
-end
-
 function _reinterpret_clustering_results(
     clustering_data,
     clustering_matrix,
@@ -423,7 +418,8 @@ function _reinterpret_clustering_results(
         n_rp += i_rp
     end
 
-    assignments = _assign_periods(distance, clustering_matrix, rp_matrix)
+    distance_matrix = pairwise(distance, rp_matrix, clustering_matrix; dims = 2)
+    assignments = [argmin(view(distance_matrix, :, p)) for p in axes(distance_matrix, 2)]
 
     for (p, rp) in enumerate(assignments)
         weight_matrix[p, rp] = complete_period_weight
