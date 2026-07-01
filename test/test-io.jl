@@ -157,3 +157,30 @@
         @test nrow(timeframe_df) == size(clustering_data.weight_matrix, 1)
     end
 end
+
+@testset "Dropped incomplete periods keep complete output durations" begin
+    profiles = DataFrame([
+        :period => [1, 1, 2, 2, 3],
+        :timestep => [1, 2, 1, 2, 1],
+        :profile_name .=> "wind",
+        :value => 1:5,
+    ])
+    clustering_data = find_representative_periods(
+        profiles,
+        2;
+        drop_incomplete_last_period = true,
+        method = :k_medoids,
+    )
+
+    connection = DBInterface.connect(DuckDB.DB)
+    TulipaClustering.write_clustering_result_to_tables(connection, clustering_data)
+
+    rep_periods_data_df =
+        DBInterface.execute(connection, "FROM rep_periods_data ORDER BY rep_period") |>
+        DataFrame
+    timeframe_data_df =
+        DBInterface.execute(connection, "FROM timeframe_data ORDER BY period") |> DataFrame
+
+    @test rep_periods_data_df.num_timesteps == [2, 2]
+    @test timeframe_data_df.num_timesteps == [2, 2]
+end

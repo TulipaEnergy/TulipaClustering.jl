@@ -100,11 +100,11 @@ function combine_periods!(df::AbstractDataFrame; layout = ProfilesTableLayout())
         throw(DomainError(df, "DataFrame does not contain a column $timestep_col"))
     end
     if columnindex(df, period_col) == 0
-        return  # if there is no period_col column in the df, leave df as is
+        return df  # if there is no period_col column in the df, leave df as is
     end
     max_t = maximum(df[!, timestep_col])
     df[!, timestep_col] .= (df[!, period_col] .- 1) .* max_t .+ df[!, timestep_col]
-    select!(df, Not(period_col))
+    return select!(df, Not(period_col))
 end
 
 """
@@ -616,7 +616,8 @@ function greedy_convex_hull(
         if mean_vector ≡ nothing
             mean_vector = vec(mean(matrix; dims = 2))
         end
-        distances_from_mean = [distance(mean_vector, matrix[:, j]) for j in axes(matrix, 2)]
+        distances_from_mean =
+            [distance(mean_vector, view(matrix, :, j)) for j in axes(matrix, 2)]
         initial_indices = [argmax(distances_from_mean)]
     end
 
@@ -630,7 +631,7 @@ function greedy_convex_hull(
 
     # Start filling in the remaining points
     hull_indices = initial_indices
-    distances_cache = Dict{Int, Float64}()  # store previously computed distances
+    distances_cache = fill(Inf, size(matrix, 2))  # store previously computed distances
     starting_index = length(initial_indices) + 1
 
     # unpack kwargs
@@ -641,17 +642,17 @@ function greedy_convex_hull(
         # Find the point that is the furthest away from the current hull
         max_distance = -Inf
         furthest_vector_index = nothing
-        hull_matrix = matrix[:, hull_indices]
+        hull_matrix = view(matrix, :, hull_indices)
         projection_matrix = pinv(hull_matrix)
         for column_index in axes(matrix, 2)
             if column_index in hull_indices
                 continue
             end
-            last_added_vector = matrix[:, last(hull_indices)]
-            target_vector = matrix[:, column_index]
+            last_added_vector = view(matrix, :, last(hull_indices))
+            target_vector = view(matrix, :, column_index)
 
             # Check whether the distance was previosly computed
-            cached_distance = get(distances_cache, column_index, Inf)
+            cached_distance = distances_cache[column_index]
             # Check whether the cached_distance is already too small for the vector to be selected
             if cached_distance <= max_distance
                 continue

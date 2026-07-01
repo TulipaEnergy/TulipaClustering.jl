@@ -2,9 +2,12 @@
     @testset "Make sure that combining periods returns a correct data frame" begin
         @test begin
             df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :value => 1:3])
-            TulipaClustering.combine_periods!(df)
+            result = TulipaClustering.combine_periods!(df)
 
-            size(df) == (3, 2) && df.timestep == collect(1:3) && df.value == collect(1:3)
+            result === df &&
+                size(df) == (3, 2) &&
+                df.timestep == collect(1:3) &&
+                df.value == collect(1:3)
         end
     end
 
@@ -30,9 +33,12 @@
     @testset "Make sure that combining periods does nothing when there are time steps but no periods" begin
         @test begin
             df = DataFrame([:timestep => [1, 2], :value => 1:2])
-            TulipaClustering.combine_periods!(df)
+            result = TulipaClustering.combine_periods!(df)
 
-            size(df) == (2, 2) && df.timestep == collect(1:2) && df.value == collect(1:2)
+            result === df &&
+                size(df) == (2, 2) &&
+                df.timestep == collect(1:2) &&
+                df.value == collect(1:2)
         end
     end
 end
@@ -93,6 +99,45 @@ end
             find_auxiliary_data(df; layout)
         end
     end
+end
+
+@testset "Custom layout initial representatives do not mutate inputs" begin
+    layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
+    clustering_data = DataFrame([
+        :p => repeat(1:2; inner = 4),
+        :ts => repeat(1:2; inner = 2, outer = 2),
+        :technology => repeat(["Solar", "Nuclear"], 4),
+        :val => 5:12,
+    ])
+    representatives = DataFrame([
+        :p => repeat([1], 4),
+        :ts => repeat(1:2; inner = 2),
+        :technology => repeat(["Solar", "Nuclear"], 2),
+        :val => 1:4,
+    ])
+    clustering_data_before = copy(clustering_data)
+    representatives_before = copy(representatives)
+
+    result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :k_medoids,
+        initial_representatives = representatives,
+        layout,
+    )
+    hull_result = find_representative_periods(
+        clustering_data,
+        2;
+        method = :convex_hull,
+        initial_representatives = representatives,
+        layout,
+    )
+
+    @test clustering_data == clustering_data_before
+    @test representatives == representatives_before
+    @test result.profiles[result.profiles.rep_period .== 2, :val] == [1.0, 2.0, 3.0, 4.0]
+    @test hull_result.profiles[hull_result.profiles.rep_period .== 1, :val] ==
+          [1.0, 2.0, 3.0, 4.0]
 end
 
 @testset "Period splitting" begin

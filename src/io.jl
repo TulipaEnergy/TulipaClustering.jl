@@ -58,8 +58,10 @@ function write_clustering_result_to_tables(
     # Create the rep_periods_data table
     aux = clustering_result.auxiliary_data
     num_rep_periods = size(clustering_result.weight_matrix, 2)
-    rep_period_duration = fill(aux.period_duration, num_rep_periods)
-    rep_period_duration[end] = aux.last_period_duration
+    includes_incomplete_last_period =
+        size(clustering_result.weight_matrix, 1) == aux.n_periods
+    rep_period_duration =
+        _period_durations(aux, num_rep_periods; includes_incomplete_last_period)
     rp_data_df = DataFrame(;
         rep_period = 1:num_rep_periods,
         num_timesteps = rep_period_duration,
@@ -69,8 +71,7 @@ function write_clustering_result_to_tables(
 
     # Create the timeframe_data table
     num_periods = size(clustering_result.weight_matrix, 1)
-    period_duration = fill(aux.period_duration, num_periods)
-    period_duration[end] = aux.last_period_duration
+    period_duration = _period_durations(aux, num_periods; includes_incomplete_last_period)
     period_data_df = DataFrame(; period = 1:num_periods, num_timesteps = period_duration)
     DuckDB.register_data_frame(connection, period_data_df, "t_timeframe_data")
 
@@ -176,6 +177,20 @@ function _rep_period_offset(num_rep_periods::Int, group_idx::Int)
     return num_rep_periods * (group_idx - 1)
 end
 
+function _period_durations(
+    aux::AuxiliaryClusteringData,
+    n_periods::Int;
+    includes_incomplete_last_period::Bool,
+)
+    durations = fill(aux.period_duration, n_periods)
+    if includes_incomplete_last_period &&
+       n_periods > 0 &&
+       aux.last_period_duration != aux.period_duration
+        durations[end] = aux.last_period_duration
+    end
+    return durations
+end
+
 """
 A function to offset representative period indices so that groups have disjoint rep_period ranges.
 For group index g, new_rep_period = old_rep_period + offset given by _rep_period_offset(n_rp, g).
@@ -271,8 +286,9 @@ function _combine_rep_periods_data(
 
     for (g, (group_key, group_result)) in enumerate(pairs(results))
         aux = group_result.auxiliary_data
-        rep_period_duration = fill(aux.period_duration, n_rp)
-        rep_period_duration[end] = aux.last_period_duration
+        includes_incomplete_last_period =
+            size(group_result.weight_matrix, 1) == aux.n_periods
+        rep_period_duration = _period_durations(aux, n_rp; includes_incomplete_last_period)
         first_rep_period = 1 + _rep_period_offset(n_rp, g)
         last_rep_period = n_rp + _rep_period_offset(n_rp, g)
 
@@ -333,8 +349,10 @@ function _combine_timeframe_data(
 
         aux = group_result.auxiliary_data
         num_periods = metadata_per_group[group_key].num_periods
-        period_duration = fill(aux.period_duration, num_periods)
-        period_duration[end] = aux.last_period_duration
+        includes_incomplete_last_period =
+            size(group_result.weight_matrix, 1) == aux.n_periods
+        period_duration =
+            _period_durations(aux, num_periods; includes_incomplete_last_period)
 
         # Create a row for each year value
         df_rows = DataFrame[]

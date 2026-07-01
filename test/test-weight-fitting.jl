@@ -49,6 +49,20 @@ end
             adaptive_grad = true,
         ) ≈ [1.0, 0.0]
     end
+
+    @testset "Make sure negative updates do not stop early" begin
+        x = [1.0]
+        subgradient = (x) -> [1.0]
+        projection = identity
+        @test TulipaClustering.projected_subgradient_descent!(
+            x;
+            subgradient,
+            projection,
+            niters = 2,
+            tol = 0.1,
+            learning_rate = 0.25,
+        ) ≈ [0.5]
+    end
 end
 
 @testset "Weight fitting" begin
@@ -173,6 +187,23 @@ end
                 dummy_matrix;
                 weight_type = :bad,
             )
+        end
+    end
+
+    @testset "Make sure zeroed weights do not become NaN" begin
+        for weight_type in (:convex, :conical_bounded)
+            weight_matrix = [0.5 0.5]
+            clustering_matrix = zeros(2, 1)
+            rp_matrix = zeros(2, 2)
+            TulipaClustering.fit_rep_period_weights!(
+                weight_matrix,
+                clustering_matrix,
+                rp_matrix;
+                weight_type,
+                tol = 1.0,
+                niters = 1,
+            )
+            @test !any(isnan, weight_matrix)
         end
     end
 end
