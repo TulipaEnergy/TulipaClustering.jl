@@ -134,7 +134,7 @@ function projected_subgradient_descent!(
         end
         y = x .- α .* g            # gradent step, may leave the domain
         x_new = projection(y)      # projection step, return to the domain
-        diff = maximum(x_new - x)  # how much did the vector change
+        diff = maximum(abs(x_new[i] - x[i]) for i in eachindex(x))
         x = x_new
         if diff ≤ tol
             break
@@ -195,7 +195,7 @@ function fit_rep_period_weights!(
         # one.
         projection = project_onto_simplex
         n_data_points = size(rp_matrix, 1)
-        rp_matrix = hcat(rp_matrix, repeat([0.0], n_data_points))
+        rp_matrix = hcat(rp_matrix, zeros(n_data_points))
     else
         throw(ArgumentError("Unsupported weight type."))
     end
@@ -214,7 +214,7 @@ function fit_rep_period_weights!(
 
     for period in periods
         # TODO: this can be parallelized; investigate
-        target_vector = clustering_matrix[:, period]
+        target_vector = view(clustering_matrix, :, period)
         subgradient = (x) -> rp_matrix' * (rp_matrix * x - target_vector)
         if weight_type == :conical_bounded
             x = vcat(Vector(weight_matrix[period, 1:(n_rp - 1)]), [0.0])
@@ -235,8 +235,8 @@ function fit_rep_period_weights!(
             # due to floating-point arithmetic and rounding.
             # To account for these cases, the weights are re-normalized.
             sum_x = sum(x)
-            if weight_type == :convex || sum_x > 1.0
-                x = x ./ sum_x
+            if sum_x > 0.0 && (weight_type == :convex || sum_x > 1.0)
+                x ./= sum_x
             end
         end
         if weight_type == :conical_bounded

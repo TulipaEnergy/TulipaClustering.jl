@@ -132,7 +132,7 @@ function find_representative_periods(
             n_rp,
             layout,
         )
-        i_rp = maximum(initial_representatives.period) # number of provided representative periods
+        i_rp = maximum(initial_representatives[!, layout.period]) # number of provided representative periods
     else
         i_rp = 0
     end
@@ -169,14 +169,13 @@ function find_representative_periods(
     )
 
     # 4. Do the clustering, now that the data is transformed into a matrix
-    clustering_matrix, rp_matrix, assignments = _compute_representatives_from_matrix(
+    clustering_matrix, rp_matrix = _compute_representatives_from_matrix(
         clustering_matrix,
         n_rp,
         initial_representatives,
         i_rp,
         method,
         aux,
-        n_complete_periods,
         distance;
         kwargs...,
     )
@@ -227,17 +226,14 @@ function _build_clustering_matrix(
     elseif method in [:convex_hull, :convex_hull_with_null, :conical_hull] &&
            !isempty(initial_representatives)
         # If clustering is one of the hull methods, we add initial representatives to the clustering matrix in front
-        updated_clustering_data = deepcopy(clustering_data)
+        updated_clustering_data = copy(clustering_data)
         updated_clustering_data[!, period_col] =
             updated_clustering_data[!, period_col] .+ i_rp
         clustering_data = vcat(initial_representatives, updated_clustering_data)
 
         clustering_matrix, keys = df_to_matrix_and_keys(
             clustering_data[
-                clustering_data[
-                    !,
-                    period_col,
-                ] .≤ (n_complete_periods + maximum(
+                clustering_data[!, period_col] .≤ (n_complete_periods + maximum(
                     initial_representatives[!, period_col],
                 )),
                 :,
@@ -262,20 +258,17 @@ function _compute_representatives_from_matrix(
     i_rp,
     method,
     aux,
-    n_complete_periods,
     distance;
     kwargs...,
 )
     if n_rp == 0 # If due to the additional representatives we have no clustering, create an empty placeholder
         rp_matrix = nothing
-        assignments = Int[]
     elseif method ≡ :k_means
         # Do the clustering
         kmeans_result = kmeans(clustering_matrix, n_rp; distance, kwargs...)
 
         # Reinterpret the results
         rp_matrix = kmeans_result.centers
-        assignments = kmeans_result.assignments
     elseif method ≡ :k_medoids
         # Do the clustering
         # k-medoids uses distance matrix instead of clustering matrix
@@ -284,7 +277,6 @@ function _compute_representatives_from_matrix(
 
         # Reinterpret the results
         rp_matrix = clustering_matrix[:, kmedoids_result.medoids]
-        assignments = kmedoids_result.assignments
         aux.medoids = kmedoids_result.medoids
     elseif method ≡ :convex_hull
         # Do the clustering, with initial indices if provided
@@ -303,19 +295,14 @@ function _compute_representatives_from_matrix(
 
         # Reinterpret the results
         rp_matrix = clustering_matrix[:, hull_indices]
-        assignments = [
-            argmin([
-                distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
-                h in hull_indices
-            ]) for p in 1:n_complete_periods
-        ]
         clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
         aux.medoids = hull_indices
     elseif method ≡ :convex_hull_with_null
         # Check if we can add null to the clustering matrix. The distance to null can
         # be undefined, e.g., for the cosine distance.
-        is_distance_to_zero_undefined =
-            isnan(distance(zeros(size(clustering_matrix, 1), 1), clustering_matrix[:, 1]))
+        is_distance_to_zero_undefined = isnan(
+            distance(zeros(size(clustering_matrix, 1)), view(clustering_matrix, :, 1)),
+        )
 
         if is_distance_to_zero_undefined
             throw(
@@ -343,12 +330,6 @@ function _compute_representatives_from_matrix(
 
         # Reinterpret the results
         rp_matrix = clustering_matrix[:, hull_indices]
-        assignments = [
-            argmin([
-                distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
-                h in hull_indices
-            ]) for p in 1:n_complete_periods
-        ]
         clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
 
         aux.medoids = hull_indices
@@ -357,7 +338,7 @@ function _compute_representatives_from_matrix(
         normal_vector = vec(mean(clustering_matrix; dims = 2))
         normalize!(normal_vector)
         projection_coefficients = [
-            1.0 / dot(normal_vector, clustering_matrix[:, j]) for
+            1.0 / dot(normal_vector, view(clustering_matrix, :, j)) for
             j in axes(clustering_matrix, 2)
         ]
         projected_matrix = [
@@ -383,18 +364,12 @@ function _compute_representatives_from_matrix(
         # Reinterpret the results
         rp_matrix = clustering_matrix[:, hull_indices]
 
-        assignments = [
-            argmin([
-                distance(clustering_matrix[:, h], clustering_matrix[:, p + i_rp]) for
-                h in hull_indices
-            ]) for p in 1:n_complete_periods
-        ]
         clustering_matrix = clustering_matrix[:, (i_rp + 1):end]
     else
         throw(ArgumentError("Clustering method is not supported"))
     end
 
-    return clustering_matrix, rp_matrix, assignments
+    return clustering_matrix, rp_matrix
 end
 
 function _reinterpret_clustering_results(
@@ -425,7 +400,7 @@ function _reinterpret_clustering_results(
 
     # In case of initial representatives and a non hull method, we add them now
     if !isempty(initial_representatives) && method in [:k_means, :k_medoids]
-        representatives_to_add = select!(
+        representatives_to_add = select(
             initial_representatives,
             period_col => :rep_period,
             aux.key_columns...,
@@ -443,12 +418,8 @@ function _reinterpret_clustering_results(
         n_rp += i_rp
     end
 
-    # TODO: Verify with Greg if we need this inconditional replacement of assignments or not (it seems like a missing if here)
-    assignments = [
-        argmin([
-            distance(clustering_matrix[:, p], rp_matrix[:, r]) for r in axes(rp_matrix, 2)
-        ]) for p in 1:n_complete_periods
-    ]
+    distance_matrix = pairwise(distance, rp_matrix, clustering_matrix; dims = 2)
+    assignments = [argmin(view(distance_matrix, :, p)) for p in axes(distance_matrix, 2)]
 
     for (p, rp) in enumerate(assignments)
         weight_matrix[p, rp] = complete_period_weight
