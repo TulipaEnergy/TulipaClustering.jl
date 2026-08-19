@@ -446,7 +446,7 @@ end
             clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
         end
     end
-    @testset "Make sure that convex hull clustering finds the hull when selecting heuristic_distance = false" begin
+    @testset "Make sure that convex hull clustering finds the hull when caching is disabled" begin
         @test begin
             clustering_data = DataFrame([
                 :period => repeat(1:2; inner = 4),
@@ -458,7 +458,7 @@ end
                 clustering_data,
                 2;
                 method = :convex_hull,
-                heuristic_distance = false,
+                cache = false,
             )
             clustering_result.weight_matrix == [1.0 0.0; 0.0 1.0]
         end
@@ -609,6 +609,25 @@ end
             ),
         ) == (1,)
     end
+end
+
+@testset "Greedy convex hull cache" begin
+    matrix = [
+        0.0 1.0 0.0 0.3
+        0.0 0.0 1.0 0.3
+    ]
+
+    @test TulipaClustering.greedy_convex_hull(
+        matrix;
+        n_points = 3,
+        distance = Euclidean(),
+        cache = true,
+    ) == TulipaClustering.greedy_convex_hull(
+        matrix;
+        n_points = 3,
+        distance = Euclidean(),
+        cache = false,
+    )
 end
 
 @testset "Validating initial representatives" begin
@@ -1179,7 +1198,7 @@ end
         end
     end
 
-    @testset "Convex hull with one initial representative picks correct initial and second representative when heuristic_distance = false" begin
+    @testset "Convex hull with one initial representative picks correct initial and second representative when caching is disabled" begin
         @test begin
             clustering_data = DataFrame([
                 :period => repeat(1:3; inner = 4),
@@ -1200,7 +1219,7 @@ end
                 2;
                 method = :convex_hull,
                 initial_representatives = representatives,
-                heuristic_distance = false,
+                cache = false,
             )
 
             (
@@ -1249,7 +1268,7 @@ end
         end
     end
 
-    @testset "Convex hull with null with one initial representative picks correct initial and second representative when heuristic_distance = false" begin
+    @testset "Convex hull with null with one initial representative picks correct initial and second representative when caching is disabled" begin
         @test begin
             clustering_data = DataFrame([
                 :period => repeat(1:3; inner = 4),
@@ -1270,7 +1289,7 @@ end
                 2;
                 method = :convex_hull_with_null,
                 initial_representatives = representatives,
-                heuristic_distance = false,
+                cache = false,
             )
 
             clustering_result.profiles[
@@ -1310,7 +1329,7 @@ end
         end
     end
 
-    @testset "Conical hull with one initial representative picks correct initial and second representative when heuristic_distance = false" begin
+    @testset "Conical hull with one initial representative picks correct initial and second representative when caching is disabled" begin
         @test begin
             clustering_data = DataFrame([
                 :period => repeat(1:3; inner = 4),
@@ -1331,7 +1350,7 @@ end
                 2;
                 method = :convex_hull_with_null,
                 initial_representatives = representatives,
-                heuristic_distance = false,
+                cache = false,
             )
 
             clustering_result.profiles[
