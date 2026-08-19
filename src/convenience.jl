@@ -112,6 +112,21 @@ function cluster!(
         ) |> DataFrame
 
     split_into_periods!(profiles; period_duration, layout)
+
+    # When using cols_to_crossby with drop_incomplete_last_period, we need to
+    # drop incomplete last periods from each cross-by subgroup BEFORE renumbering,
+    # because _update_period_numbers_using_crossby_cols! merges periods from
+    # different cross-by groups into a single sequence, which means intermediate
+    # incomplete periods (the last period of a non-last cross-by group) would no
+    # longer be at the end and would cause dimension mismatches.
+    drop_incomplete_for_find_rp = drop_incomplete_last_period
+    crossby_weight_factor = 1.0
+    if drop_incomplete_last_period && !isempty(layout.cols_to_crossby)
+        crossby_weight_factor =
+            _drop_incomplete_last_periods_per_crossby_group!(profiles, layout)
+        drop_incomplete_for_find_rp = false
+    end
+
     grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
 
     grouped_profiles_data, metadata_per_group =
@@ -121,7 +136,7 @@ function cluster!(
         group_key => find_representative_periods(
             group,
             num_rps;
-            drop_incomplete_last_period,
+            drop_incomplete_last_period = drop_incomplete_for_find_rp,
             method,
             distance,
             initial_representatives = _get_initial_representatives_for_group(
@@ -134,6 +149,9 @@ function cluster!(
         ) for (group_key, group) in pairs(grouped_profiles_data)
     )
     for clustering_result in values(results_per_group)
+        if crossby_weight_factor != 1.0
+            clustering_result.weight_matrix .*= crossby_weight_factor
+        end
         fit_rep_period_weights!(
             clustering_result;
             weight_type,
@@ -381,4 +399,55 @@ function _update_period_numbers_using_crossby_cols!(
     end
 
     return grouped_profiles_data, metadata_per_group
+end
+
+"""
+    _drop_incomplete_last_periods_per_crossby_group!(profiles, layout)
+
+For each combination of `cols_to_groupby` and `cols_to_crossby` columns in `profiles`,
+drops the last period if it is incomplete (i.e., has fewer timesteps than the other periods).
+
+This must be called **before** `_update_period_numbers_using_crossby_cols!` to ensure
+that incomplete last periods from each cross-by subgroup are removed before period
+renumbering merges them into a single sequence.
+
+# Returns
+- Weight adjustment factor to redistribute the dropped periods' weight across
+  the remaining complete periods.
+
+# Modifications in Place
+Deletes rows of incomplete last periods from `profiles`.
+"""
+function _drop_incomplete_last_periods_per_crossby_group!(
+    profiles::DataFrame,
+    layout::ProfilesTableLayout,
+)
+    period_col = layout.period
+    timestep_col = layout.timestep
+    group_cols = vcat(layout.cols_to_groupby, layout.cols_to_crossby)
+    rows_to_delete = Int[]
+    weight_factor = 1.0
+    for sub_group in groupby(profiles, group_cols)
+        n_periods = maximum(sub_group[!, period_col])
+        period_duration = maximum(sub_group[!, timestep_col])
+        last_period_duration = maximum(
+            sub_group[sub_group[!, period_col] .== n_periods, timestep_col],
+        )
+        if last_period_duration < period_duration
+            parent_indices = parentindices(sub_group)[1]
+            for (local_idx, parent_idx) in enumerate(parent_indices)
+                if sub_group[local_idx, period_col] == n_periods
+                    push!(rows_to_delete, parent_idx)
+                end
+            end
+            full_period_timesteps = period_duration * (n_periods - 1)
+            total_timesteps = full_period_timesteps + last_period_duration
+            weight_factor = total_timesteps / full_period_timesteps
+        end
+    end
+    if !isempty(rows_to_delete)
+        sort!(unique!(rows_to_delete))
+        deleteat!(profiles, rows_to_delete)
+    end
+    return weight_factor
 end
