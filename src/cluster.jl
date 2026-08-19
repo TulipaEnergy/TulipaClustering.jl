@@ -614,7 +614,7 @@ function append_period_from_source_df_as_rp!(
 end
 
 """
-    greedy_convex_hull(matrix; n_points, distance, initial_indices, mean_vector)
+    greedy_convex_hull(matrix; n_points, distance, initial_indices, mean_vector, cache)
 
   Greedy method for finding `n_points` points in a hull of the dataset. The points
   are added iteratively, at each step the point that is the furthest away from the
@@ -628,6 +628,17 @@ end
       it will be chosen as the point furthest away from the `mean_vector`; this can be
       nothing, in which case the first step will add a point furtherst away from
       the centroid (the mean) of the dataset
+    - `cache`: whether to cache each candidate's projection onto the current hull;
+            cached projections are reused only for `Euclidean` and `SqEuclidean` distances
+            when the obtuse-angle certificate proves that the projection remains valid after
+            a new hull point is added. Other distance types recompute projections.
+            Set to `false` to recompute every candidate projection.
+
+The projection cache stores both the projected point and its distance. For a cached
+candidate `d` and the newly added hull point `c`, the cached projection `q` is reused
+when `(d - q)' * (c - q) ≤ 0`. This certificate guarantees that `q` remains the
+closest point in the enlarged convex hull for Euclidean geometry. Cache reuse changes
+the amount of projection work, but not the result relative to the uncached path.
 """
 function greedy_convex_hull(
     matrix::AbstractMatrix{Float64};
@@ -635,6 +646,7 @@ function greedy_convex_hull(
     distance::SemiMetric,
     initial_indices::Union{Vector{Int}, Nothing} = nothing,
     mean_vector::Union{Vector{Float64}, Nothing} = nothing,
+    cache::Bool = true,
     kwargs...,
 )
     # First resolve the points that are already in the hull given via `initial_indices`
@@ -652,12 +664,9 @@ function greedy_convex_hull(
         return initial_indices[1:n_points]
     end
 
-    # Check if the keyword argument `heuristic_distance` is passed
-    heuristic_distance = get(kwargs, :heuristic_distance, true)
-
     # Start filling in the remaining points
     hull_indices = initial_indices
-    distances_cache = fill(Inf, size(matrix, 2))  # store previously computed distances
+    projection_cache = Dict{Int, Tuple{Vector{Float64}, Float64}}()
     starting_index = length(initial_indices) + 1
 
     # unpack kwargs
@@ -677,30 +686,12 @@ function greedy_convex_hull(
             last_added_vector = view(matrix, :, last(hull_indices))
             target_vector = view(matrix, :, column_index)
 
-            # Check whether the distance was previosly computed
-            cached_distance = distances_cache[column_index]
-            # Check whether the cached_distance is already too small for the vector to be selected
-            if cached_distance <= max_distance
-                continue
-            end
-            if heuristic_distance
-                d_temp = distance(target_vector, last_added_vector)
-                if d_temp ≥ cached_distance
-                    d_min = cached_distance
-                else
-                    subgradient = x -> hull_matrix' * (hull_matrix * x - target_vector)
-                    x = projection_matrix * target_vector
-                    x = projected_subgradient_descent!(
-                        x;
-                        subgradient,
-                        projection = project_onto_simplex,
-                        filtered_kwargs...,
-                    )
-                    projected_target = hull_matrix * x
-                    d = distance(projected_target, target_vector)
-                    d_min = min(d, d_temp)
-                    distances_cache[column_index] = d_min
-                end
+            cached = get(projection_cache, column_index, nothing)
+            if cache &&
+               (distance isa Euclidean || distance isa SqEuclidean) &&
+               cached !== nothing &&
+               dot(target_vector - cached[1], last_added_vector - cached[1]) ≤ 0
+                d = cached[2]
             else
                 subgradient = x -> hull_matrix' * (hull_matrix * x - target_vector)
                 x = projection_matrix * target_vector
@@ -712,12 +703,11 @@ function greedy_convex_hull(
                 )
                 projected_target = hull_matrix * x
                 d = distance(projected_target, target_vector)
-                d_min = min(d, cached_distance)
-                distances_cache[column_index] = d_min
+                projection_cache[column_index] = (projected_target, d)
             end
 
-            if d_min > max_distance
-                max_distance = d_min
+            if d > max_distance
+                max_distance = d
                 furthest_vector_index = column_index
             end
         end
