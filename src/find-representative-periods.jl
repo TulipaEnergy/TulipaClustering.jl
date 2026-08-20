@@ -233,10 +233,7 @@ function _build_clustering_matrix(
 
         clustering_matrix, keys = df_to_matrix_and_keys(
             clustering_data[
-                clustering_data[
-                    !,
-                    period_col,
-                ] .≤ (n_complete_periods + maximum(
+                clustering_data[!, period_col] .≤ (n_complete_periods + maximum(
                     initial_representatives[!, period_col],
                 )),
                 :,
