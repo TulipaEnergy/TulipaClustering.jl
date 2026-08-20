@@ -194,6 +194,73 @@ The function [`cluster!`](@ref) has several keyword arguments that can be used t
     representative periods (a sum with nonnegative weights) with the total
     weight bounded from above by one.
 
+### Algorithm-specific keyword arguments
+
+[`cluster!`](@ref) accepts two dictionaries for options that belong to the underlying
+algorithms:
+
+- `clustering_kwargs` is passed to the algorithm selected by `method`.
+- `weight_fitting_kwargs` is passed to the projected subgradient algorithm that fits
+  the representative-period weights.
+
+The available `clustering_kwargs` depend on `method`:
+
+| Keyword | Method | Default | Effect |
+| --- | --- | --- | --- |
+| `init` | `:k_means`, `:k_medoids` | `:kmpp` | Chooses the initial centers or medoids. Use `:rand`, `:kmpp`, or a vector of period indices; `:k_medoids` also accepts `:kmcen`. Different initialization can produce different representatives. |
+| `maxiter` | `:k_means`, `:k_medoids` | `100`, `200` | Limits the iterations. Increasing it can improve convergence but may take longer. |
+| `tol` | `:k_means`, `:k_medoids` | `1e-6`, `1e-8` | Stops when the objective changes by less than this value. A smaller value can take longer. |
+| `display` | `:k_means`, `:k_medoids` | `:none` | Controls progress output from Clustering.jl: `:none`, `:final`, or `:iter`. |
+| `weights` | `:k_means` | `nothing` | Gives the source periods different importance when calculating cluster centers. |
+| `rng` | `:k_means` | global RNG | Controls random initialization and allows reproducible results. |
+| `heuristic_distance` | hull methods | `true` | Uses the distance to the most recently added point to decide when a cached hull distance can be reused. Set it to `false` to recompute distances for candidates that pass the cache check; this is slower but disables the heuristic introduced for hull clustering. |
+| `niters` | hull methods | `100` | Limits the projected subgradient iterations used to measure distance to the current hull. |
+| `tol` | hull methods | `1e-5` | Stops that distance calculation when no component changes by more than this value. |
+| `learning_rate` | hull methods | `0.001` | Sets the projected subgradient step size. Larger values move faster but may be less stable. |
+| `adaptive_grad` | hull methods | `false` | Uses an adaptive learning rate when set to `true`. |
+
+Here, “hull methods” means `:convex_hull`, `:convex_hull_with_null`, and
+`:conical_hull`. The `distance` and `initial_representatives` options are direct
+keywords of [`cluster!`](@ref), so do not repeat them in `clustering_kwargs`.
+
+The available `weight_fitting_kwargs` are:
+
+| Keyword | Default | Effect |
+| --- | --- | --- |
+| `niters` | `100` | Limits the projected subgradient iterations for each source period. |
+| `learning_rate` | `0.001` | Sets the step size. Decrease it if fitted weights oscillate; increase it if convergence is stable but slow. |
+| `adaptive_grad` | `false` | Uses an adaptive learning rate when set to `true`. |
+| `show_progress` | `false` | Displays weight-fitting progress when set to `true`. |
+
+Weight-fitting tolerance is the top-level `tol` keyword of [`cluster!`](@ref), whose
+default is `1e-2`. In contrast, `clustering_kwargs[:tol]` controls only the selected
+clustering algorithm. For example:
+
+```julia
+clusters = cluster!(
+    connection,
+    period_duration,
+    num_rps;
+    method = :convex_hull,
+    weight_type = :convex,
+    tol = 1e-4,
+    clustering_kwargs = Dict(
+        :heuristic_distance => false,
+        :niters => 200,
+        :tol => 1e-6,
+    ),
+    weight_fitting_kwargs = Dict(
+        :niters => 500,
+        :learning_rate => 0.0005,
+        :adaptive_grad => true,
+        :show_progress => true,
+    ),
+)
+```
+
+Start with the defaults and tune these options only when runtime, convergence, or the
+selected representative periods require it.
+
 As you can see, there are several keyword arguments that can be combined to explore different clustering strategies. Our proposed method is the Hull Clustering with Blended Representative Periods, which can be activated by setting the following keyword arguments:
 
 - `method = :convex_hull`
@@ -266,22 +333,188 @@ plot(plots..., layout=(2, 2), size=(800, 600))
 
 The first difference you may notice is that the representative periods (RPs) obtained with hull clustering are more extreme than those obtained with the default method. This is because hull clustering selects RPs that are more likely to be constraint-binding in an optimization model.
 
-!!! tip "The Projected gradient descent parameters"
-    The parameters `niters` and `learning_rate` tell for how many iterations to run the descent and by how much to adjust the weights in each iterations. More iterations make the method slower but produce better results. Larger learning rate makes the method converge faster but in a less stable manner (i.e., weights might start going up and down a lot from iteration to iteration). Sometimes you need to find the right balance for yourself. In general, if the weights produced by the method look strange, try decreasing the learning rate and/or increasing the number of iterations.
-
 For more details on the comparison of clustering methods please refer to the [Scientific References](@ref scientific-refs) section.
 
-## Clustering by other columns
+## [Using Initial Representatives](@id initial_representatives)
 
-`TulipaClustering.jl` clusters by default using the columns `year`, i.e., it will create representative periods for each year in the input data. The total number of representative periods will be `num_rps * number_of_years`. This is useful when the profiles have a strong seasonal component that changes from year to year.
+Use `initial_representatives` when a known period must be included in the output, for
+example a period containing an extreme demand or low-renewable event. The value is a
+`DataFrame` with the same columns as the input `profiles` table plus a `period` column.
 
-However, sometimes the user might want to cluster by other columns, e.g., `scenario` or `region`, or even by multiple columns, e.g., `year` and `scenario`. The package allows to cluster by different columns by passing a custom [`ProfilesTableLayout`](@ref) to [`cluster!`](@ref).
+The following example forces day 30 of the input data to be one of the four
+representative periods. Its original timesteps are converted back to `1:period_duration`
+because every representative period must use local timestep numbers:
 
-!!! warning "Required"
-    The `cols_to_groupby` argument in [`ProfilesTableLayout`](@ref) is a vector of symbols, i.e., `cols_to_groupby = [:year, :scenario]`.
+```@example tutorial
+forced_day = 30
+first_timestep = (forced_day - 1) * period_duration + 1
+last_timestep = forced_day * period_duration
 
-!!! note "The number of representative periods"
-    When clustering by multiple columns, the total number of representative periods will be `num_rps * number_of_unique_combinations_of_groupby_columns`. For example, if the input data has 3 unique years and 2 unique scenarios, and the user wants to cluster by `year` and `scenario`, then the total number of representative periods will be `num_rps * 3 * 2 = num_rps * 6`.
+initial_representatives = nice_query("""
+    SELECT
+        1 AS period,
+        timestep - $(first_timestep - 1) AS timestep,
+        year,
+        profile_name,
+        value
+    FROM profiles
+    WHERE timestep BETWEEN $first_timestep AND $last_timestep
+    ORDER BY profile_name, timestep
+""")
+
+first(initial_representatives, 5)
+```
+
+Pass the dataframe directly to [`cluster!`](@ref). The requested `num_rps` is the total
+number of representative periods, including the supplied one:
+
+```@example tutorial
+for table_name in (          # hide
+    "rep_periods_data",      # hide
+    "rep_periods_mapping",   # hide
+    "profiles_rep_periods",  # hide
+    "timeframe_data",        # hide
+)                            # hide
+    DuckDB.query(connection, "DROP TABLE IF EXISTS $table_name") # hide
+end                          # hide
+
+clusters = cluster!(
+    connection,
+    period_duration,
+    num_rps;
+    method = :k_medoids,
+    initial_representatives,
+)
+
+# With k-means and k-medoids, supplied representatives are placed last.
+nice_query("""
+    SELECT *
+    FROM profiles_rep_periods
+    WHERE rep_period = $num_rps
+    ORDER BY profile_name, timestep
+    LIMIT 5
+""")
+```
+
+The input must satisfy these requirements:
+
+- Include every column from the input `profiles` table and the `period` column. Keep
+  them in the post-splitting order: `period`, `timestep`, and then the remaining input
+  columns in their original order. This includes all grouping and cross-by columns
+  configured in [`ProfilesTableLayout`](@ref).
+- Include every profile and other key combination present in the corresponding clustering
+  group. Selecting only the demand profile, for example, is not sufficient if the input
+  also contains availability profiles.
+- Number supplied periods from `1` and give every period exactly `period_duration`
+  timesteps numbered from `1`.
+- Supply no more than `num_rps` periods. If an incomplete final period is retained as its
+  own representative, it also occupies one of the `num_rps` places.
+
+For `:k_means` and `:k_medoids`, TulipaClustering finds the remaining representatives
+first and appends the supplied periods afterward. For the hull methods, it starts the hull
+with the supplied periods, so they influence which additional points are selected and
+appear first in the output. In either case a supplied representative is guaranteed to
+appear, but it can receive zero weight if no source period is closest to it.
+
+When clustering separate groups, such as several years, the `period` numbering is local
+to each group. You may provide initial representatives for only some groups. When using
+`cols_to_crossby`, however, provide the complete set of crossed values for every group
+that has initial representatives.
+
+## [Grouping and crossing in practice](@id grouping-and-crossing-tutorial)
+
+`TulipaClustering.jl` clusters each `cols_to_groupby` combination independently and
+pools periods across the values in `cols_to_crossby`. The following example uses both:
+one clustering problem per year and one shared representative-period set across
+scenarios within that year.
+
+First, create two scenarios from the tutorial profiles. Real input can already contain
+these columns; this duplication only makes the example self-contained.
+
+```@example tutorial
+DuckDB.query(
+    connection,
+    """
+    CREATE OR REPLACE TABLE scenario_profiles AS
+    SELECT
+        p.year,
+        s.scenario,
+        p.profile_name,
+        p.timestep,
+        p.value * s.scale AS value
+    FROM profiles AS p
+    CROSS JOIN (VALUES ('low', 0.9), ('high', 1.1)) AS s(scenario, scale)
+    """,
+)
+
+nice_query("""
+    SELECT year, scenario, COUNT(*) AS rows
+    FROM scenario_profiles
+    GROUP BY year, scenario
+    ORDER BY year, scenario
+""")
+```
+
+Assign `year` to `cols_to_groupby` and `scenario` to `cols_to_crossby`. A column cannot
+appear in both lists.
+
+```@example tutorial
+cross_scenario_layout = TulipaClustering.ProfilesTableLayout(;
+    cols_to_groupby = [:year],
+    cols_to_crossby = [:scenario],
+)
+
+clusters = cluster!(
+    connection,
+    period_duration,
+    num_rps;
+    input_profile_table_name = "scenario_profiles",
+    layout = cross_scenario_layout,
+)
+```
+
+There is one result in `clusters` for every year, and each result contains exactly
+`num_rps` representatives. The `scenario` column is absent from
+`profiles_rep_periods` because the representatives are shared across scenarios:
+
+```@example tutorial
+nice_query("""
+    SELECT year, COUNT(*) AS representative_periods
+    FROM rep_periods_data
+    GROUP BY year
+    ORDER BY year
+""")
+```
+
+```@example tutorial
+nice_query("FROM profiles_rep_periods LIMIT 5")
+```
+
+The `rep_periods_mapping` table retains `scenario`, allowing every original
+scenario-period pair to map independently to the shared representatives:
+
+```@example tutorial
+nice_query("""
+    FROM rep_periods_mapping
+    ORDER BY year, scenario, period, rep_period
+    LIMIT 10
+""")
+```
+
+To obtain a separate set for each scenario instead, move `scenario` from
+`cols_to_crossby` to `cols_to_groupby`:
+
+```julia
+per_scenario_layout = TulipaClustering.ProfilesTableLayout(;
+    cols_to_groupby = [:year, :scenario],
+    cols_to_crossby = [],
+)
+```
+
+This produces `num_rps * number_of_scenarios` representatives per year and retains
+`scenario` in the representative-profile tables. See [Grouping and Crossing
+Columns](@ref grouping-and-crossing) for the conceptual differences, including what
+happens when `scenario` is placed in neither list.
 
 ## [Handling an Incomplete Final Week](@id incomplete_last_period)
 
