@@ -4,7 +4,7 @@ using Documenter
 DocMeta.setdocmeta!(
     TulipaClustering,
     :DocTestSetup,
-    :(using TulipaClustering);
+    :(using TulipaClustering, DataFrames);
     recursive = true,
 )
 

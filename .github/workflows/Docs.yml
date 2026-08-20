@@ -46,7 +46,7 @@ jobs:
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
             using TulipaClustering
-            DocMeta.setdocmeta!(TulipaClustering, :DocTestSetup, :(using TulipaClustering); recursive=true)
+            DocMeta.setdocmeta!(TulipaClustering, :DocTestSetup, :(using TulipaClustering, DataFrames); recursive=true)
             doctest(TulipaClustering)'
       - name: Generate and deploy documentation
         run: julia --project=docs docs/make.jl

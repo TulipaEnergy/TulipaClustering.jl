@@ -35,59 +35,61 @@ Behavior & edge cases:
 ## Examples
 
 Basic usage with default layout:
-```
-julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :value => 1:3])
+```jldoctest
+julia> df = DataFrame(period = [1, 1, 2], timestep = [1, 2, 1], value = 1:3)
 3×3 DataFrame
  Row │ period  timestep  value
-     │ Int64   Int64      Int64
-─────┼──────────────────────────
-   1 │      1          1      1
-   2 │      1          2      2
-   3 │      2          1      3
+     │ Int64   Int64     Int64
+─────┼─────────────────────────
+   1 │      1         1      1
+   2 │      1         2      2
+   3 │      2         1      3
 
 julia> TulipaClustering.combine_periods!(df)
 3×2 DataFrame
  Row │ timestep  value
-     │ Int64      Int64
-─────┼──────────────────
-   1 │         1      1
-   2 │         2      2
-   3 │         3      3
+     │ Int64     Int64
+─────┼─────────────────
+   1 │        1      1
+   2 │        2      2
+   3 │        3      3
 ```
 
 Custom column names via a layout:
-```
-julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts)
-julia> df = DataFrame([:p => [1,1,2], :ts => [1,2,1], :value => 10:12])
+```jldoctest
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts);
+
+julia> df = DataFrame(p = [1, 1, 2], ts = [1, 2, 1], value = 10:12)
 3×3 DataFrame
- Row │ p      ts   value
+ Row │ p      ts     value
      │ Int64  Int64  Int64
 ─────┼─────────────────────
-   1 │     1     1     10
-   2 │     1     2     11
-   3 │     2     1     12
+   1 │     1      1     10
+   2 │     1      2     11
+   3 │     2      1     12
 
 julia> TulipaClustering.combine_periods!(df; layout)
 3×2 DataFrame
- Row │ ts    value
+ Row │ ts     value
      │ Int64  Int64
 ─────┼──────────────
-   1 │    1     10
-   2 │    2     11
-   3 │    3     12
+   1 │     1     10
+   2 │     2     11
+   3 │     3     12
 ```
 
 No `period` column (no-op):
-```
-julia> df = DataFrame([:timestep => 1:3, :value => 4:6])
+```jldoctest
+julia> df = DataFrame(timestep = 1:3, value = 4:6);
+
 julia> TulipaClustering.combine_periods!(df)
 3×2 DataFrame
  Row │ timestep  value
-     │ Int64      Int64
-─────┼──────────────────
-   1 │         1      4
-   2 │         2      5
-   3 │         3      6
+     │ Int64     Int64
+─────┼─────────────────
+   1 │        1      4
+   2 │        2      5
+   3 │        3      6
 ```
 """
 function combine_periods!(df::AbstractDataFrame; layout = ProfilesTableLayout())
@@ -121,10 +123,62 @@ If `period_duration` is `nothing`, then all time steps are in a single period (I
 
 # Examples
 
-```
-julia> df = DataFrame([:timestep => 1:4, :value => 5:8])
+```jldoctest
+julia> df = DataFrame(timestep = 1:4, value = 5:8)
 4×2 DataFrame
  Row │ timestep  value
+     │ Int64     Int64
+─────┼─────────────────
+   1 │        1      5
+   2 │        2      6
+   3 │        3      7
+   4 │        4      8
+
+julia> TulipaClustering.split_into_periods!(df; period_duration = 2)
+4×3 DataFrame
+ Row │ period  timestep  value
+     │ Int64   Int64     Int64
+─────┼─────────────────────────
+   1 │      1         1      5
+   2 │      1         2      6
+   3 │      2         1      7
+   4 │      2         2      8
+
+julia> df = DataFrame(period = [1, 1, 2], timestep = [1, 2, 1], value = 1:3)
+3×3 DataFrame
+ Row │ period  timestep  value
+     │ Int64   Int64     Int64
+─────┼─────────────────────────
+   1 │      1         1      1
+   2 │      1         2      2
+   3 │      2         1      3
+
+julia> TulipaClustering.split_into_periods!(df; period_duration = 1)
+3×3 DataFrame
+ Row │ period  timestep  value
+     │ Int64   Int64     Int64
+─────┼─────────────────────────
+   1 │      1         1      1
+   2 │      2         1      2
+   3 │      3         1      3
+
+julia> TulipaClustering.split_into_periods!(df)
+3×3 DataFrame
+ Row │ period  timestep  value
+     │ Int64   Int64     Int64
+─────┼─────────────────────────
+   1 │      1         1      1
+   2 │      1         2      2
+   3 │      1         3      3
+```
+
+Custom column names via a layout:
+```jldoctest
+julia> layout = ProfilesTableLayout(; timestep = :time_step, period = :periods);
+
+julia> df = DataFrame(time_step = 1:4, value = 5:8)
+4×2 DataFrame
+ Row │ time_step  value
      │ Int64      Int64
 ─────┼──────────────────
    1 │         1      5
@@ -132,66 +186,15 @@ julia> df = DataFrame([:timestep => 1:4, :value => 5:8])
    3 │         3      7
    4 │         4      8
 
-julia> TulipaClustering.split_into_periods!(df; period_duration=2)
-4×3 DataFrame
- Row │ period  timestep  value
-     │ Int64   Int64      Int64
-─────┼──────────────────────────
-   1 │      1          1      5
-   2 │      1          2      6
-   3 │      2          1      7
-   4 │      2          2      8
-
-julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :value => 1:3])
-3×3 DataFrame
- Row │ period  timestep  value
-     │ Int64   Int64      Int64
-─────┼──────────────────────────
-   1 │      1          1      1
-   2 │      1          2      2
-   3 │      2          1      3
-
-julia> TulipaClustering.split_into_periods!(df; period_duration=1)
-3×3 DataFrame
- Row │ period  timestep  value
-     │ Int64   Int64      Int64
-─────┼──────────────────────────
-   1 │      1          1      1
-   2 │      2          1      2
-   3 │      3          1      3
-
-julia> TulipaClustering.split_into_periods!(df)
-3×3 DataFrame
- Row │ period  timestep  value
-     │ Int64   Int64      Int64
-─────┼──────────────────────────
-   1 │      1          1      1
-   2 │      1          2      2
-   3 │      1          3      3
-```
-
-Custom column names via a layout:
-```
-julia> layout = ProfilesTableLayout(; timestep = :time_step, period = :periods)
-julia> df = DataFrame([:time_step => 1:4, :value => 5:8])
-4×2 DataFrame
- Row │ time_step  value
-    │ Int64      Int64
-─────┼──────────────────
-  1 │         1      5
-  2 │         2      6
-  3 │         3      7
-  4 │         4      8
-
-julia> TulipaClustering.split_into_periods!(df; period_duration=2, layout)
+julia> TulipaClustering.split_into_periods!(df; period_duration = 2, layout)
 4×3 DataFrame
  Row │ periods  time_step  value
-    │ Int64    Int64      Int64
+     │ Int64    Int64      Int64
 ─────┼───────────────────────────
-  1 │       1          1      5
-  2 │       1          2      6
-  3 │       2          1      7
-  4 │       2          2      8
+   1 │       1          1      5
+   2 │       1          2      6
+   3 │       2          1      7
+   4 │       2          2      8
 ```
 """
 function split_into_periods!(
@@ -225,7 +228,7 @@ function split_into_periods!(
 end
 
 """
-  validate_df_and_find_key_columns(df; layout = ProfilesTableLayout())
+    validate_df_and_find_key_columns(df; layout = ProfilesTableLayout())
 
 Checks that dataframe `df` contains the necessary columns (as described by
 `layout`) and returns a list of columns that act as keys (i.e., unique data
@@ -235,15 +238,15 @@ identifiers within different periods). Keys are all columns except
 # Examples
 
 Default column names:
-```
-julia> df = DataFrame([:period => [1, 1, 2], :timestep => [1, 2, 1], :a .=> "a", :value => 1:3])
+```jldoctest
+julia> df = DataFrame(period = [1, 1, 2], timestep = [1, 2, 1], a = fill("a", 3), value = 1:3)
 3×4 DataFrame
  Row │ period  timestep  a       value
-     │ Int64   Int64      String  Int64
-─────┼──────────────────────────────────
-   1 │      1          1  a           1
-   2 │      1          2  a           2
-   3 │      2          1  a           3
+     │ Int64   Int64     String  Int64
+─────┼─────────────────────────────────
+   1 │      1         1  a           1
+   2 │      1         2  a           2
+   3 │      2         1  a           3
 
 julia> TulipaClustering.validate_df_and_find_key_columns(df)
 2-element Vector{Symbol}:
@@ -252,16 +255,17 @@ julia> TulipaClustering.validate_df_and_find_key_columns(df)
 ```
 
 Custom column names via a layout:
-```
-julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
-julia> df = DataFrame(p = [1, 1, 2], ts = [1, 2, 1], a = "a", val = 1:3)
+```jldoctest
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val);
+
+julia> df = DataFrame(p = [1, 1, 2], ts = [1, 2, 1], a = fill("a", 3), val = 1:3)
 3×4 DataFrame
- Row │ p      ts   a       val
+ Row │ p      ts     a       val
      │ Int64  Int64  String  Int64
 ─────┼─────────────────────────────
-   1 │     1     1  a           1
-   2 │     1     2  a           2
-   3 │     2     1  a           3
+   1 │     1      1  a           1
+   2 │     1      2  a           2
+   3 │     2      1  a           3
 
 julia> TulipaClustering.validate_df_and_find_key_columns(df; layout)
 2-element Vector{Symbol}:
@@ -270,10 +274,20 @@ julia> TulipaClustering.validate_df_and_find_key_columns(df; layout)
 ```
 
 Missing columns error references layout-provided names:
-```
-julia> df = DataFrame([:value => 1])
-julia> TulipaClustering.validate_df_and_find_key_columns(df)
-ERROR: DomainError: DataFrame must contain columns `timestep` and `value`
+```jldoctest
+julia> df = DataFrame(value = [1]);
+
+julia> err = try
+           TulipaClustering.validate_df_and_find_key_columns(df)
+       catch err
+           err
+       end;
+
+julia> err isa DomainError
+true
+
+julia> err.msg
+"DataFrame must contain columns `timestep` and `value`"
 ```
 """
 function validate_df_and_find_key_columns(
@@ -316,15 +330,18 @@ Returns `AuxiliaryClusteringData` with:
 
 # Example
 
-```
-julia> df = DataFrame([:period => [1,1,2,2], :timestep => [1,2,1,2], :a => "x", :value => 10:13])
-julia> aux = TulipaClustering.find_auxiliary_data(df)
-AuxiliaryClusteringData([:timestep, :a], 2, 2, 2, nothing)
+```jldoctest
+julia> df = DataFrame(period = [1, 1, 2, 2], timestep = [1, 2, 1, 2], a = fill("x", 4), value = 10:13);
 
-julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
-julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,1], :a => "x", :val => 10:13])
+julia> TulipaClustering.find_auxiliary_data(df)
+TulipaClustering.AuxiliaryClusteringData([:timestep, :a], 2, 2, 2, nothing)
+
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val);
+
+julia> df2 = DataFrame(p = [1, 1, 2, 2], ts = [1, 2, 1, 1], a = fill("x", 4), val = 10:13);
+
 julia> TulipaClustering.find_auxiliary_data(df2; layout)
-AuxiliaryClusteringData([:ts, :a], 2, 1, 2, nothing)
+TulipaClustering.AuxiliaryClusteringData([:ts, :a], 2, 1, 2, nothing)
 ```
 """
 function find_auxiliary_data(
@@ -379,7 +396,7 @@ function find_period_weights(
 end
 
 """
-  df_to_matrix_and_keys(df, key_columns; layout = ProfilesTableLayout())
+    df_to_matrix_and_keys(df, key_columns; layout = ProfilesTableLayout())
 
 Converts a long-format dataframe `df` to a matrix, using the value/period
 columns from `layout`. Columns listed in `key_columns` are kept as keys.
@@ -389,16 +406,16 @@ Returns `(matrix::Matrix{Float64}, keys::DataFrame)`.
 # Examples
 
 Default layout:
-```
-julia> df = DataFrame([:period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
+```jldoctest
+julia> df = DataFrame(period = [1, 1, 2, 2], timestep = [1, 2, 1, 2], a = fill("a", 4), value = 1:4)
 4×4 DataFrame
  Row │ period  timestep  a       value
-     │ Int64   Int64      String  Int64
-─────┼──────────────────────────────────
-   1 │      1          1  a           1
-   2 │      1          2  a           2
-   3 │      2          1  a           3
-   4 │      2          2  a           4
+     │ Int64   Int64     String  Int64
+─────┼─────────────────────────────────
+   1 │      1         1  a           1
+   2 │      1         2  a           2
+   3 │      2         1  a           3
+   4 │      2         2  a           4
 
 julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:timestep, :a]); m
 2×2 Matrix{Float64}:
@@ -408,16 +425,18 @@ julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:timestep, :a]); m
 julia> k
 2×2 DataFrame
  Row │ timestep  a
-     │ Int64      String
-─────┼───────────────────
-   1 │         1  a
-   2 │         2  a
+     │ Int64     String
+─────┼──────────────────
+   1 │        1  a
+   2 │        2  a
 ```
 
 Custom layout:
-```
-julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
-julia> df = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :a .=> "a", :val => 1:4])
+```jldoctest
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val);
+
+julia> df = DataFrame(p = [1, 1, 2, 2], ts = [1, 2, 1, 2], a = fill("a", 4), val = 1:4);
+
 julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:ts, :a]; layout); m
 2×2 Matrix{Float64}:
  1.0  3.0
@@ -425,11 +444,11 @@ julia> m, k = TulipaClustering.df_to_matrix_and_keys(df, [:ts, :a]; layout); m
 
 julia> k
 2×2 DataFrame
- Row │ ts    a
+ Row │ ts     a
      │ Int64  String
-─────┼────────────────
-   1 │    1  a
-   2 │    2  a
+─────┼───────────────
+   1 │     1  a
+   2 │     2  a
 ```
 """
 function df_to_matrix_and_keys(
@@ -452,44 +471,48 @@ Converts a matrix `matrix` to a long-format dataframe with columns
 # Examples
 
 Default layout:
-```
+```jldoctest
 julia> m = [1.0 3.0; 2.0 4.0]
 2×2 Matrix{Float64}:
  1.0  3.0
  2.0  4.0
 
-julia> k = DataFrame([:timestep => 1:2, :a .=> "a"])
+julia> k = DataFrame(timestep = 1:2, a = fill("a", 2))
 2×2 DataFrame
  Row │ timestep  a
-     │ Int64      String
-─────┼───────────────────
-   1 │         1  a
-   2 │         2  a
+     │ Int64     String
+─────┼──────────────────
+   1 │        1  a
+   2 │        2  a
 
 julia> TulipaClustering.matrix_and_keys_to_df(m, k)
 4×4 DataFrame
  Row │ rep_period  timestep  a       value
-     │ Int64       Int64      String  Float64
-─────┼────────────────────────────────────────
-   1 │          1          1  a           1.0
-   2 │          1          2  a           2.0
-   3 │          2          1  a           3.0
-   4 │          2          2  a           4.0
+     │ Int64       Int64     String  Float64
+─────┼───────────────────────────────────────
+   1 │          1         1  a           1.0
+   2 │          1         2  a           2.0
+   3 │          2         1  a           3.0
+   4 │          2         2  a           4.0
 ```
 
 Custom layout:
-```
-julia> layout = ProfilesTableLayout(; timestep=:ts, value=:val)
-julia> k = DataFrame([:ts => 1:2, :a .=> "a"])
+```jldoctest
+julia> layout = ProfilesTableLayout(; timestep = :ts, value = :val);
+
+julia> m = [1.0 3.0; 2.0 4.0];
+
+julia> k = DataFrame(ts = 1:2, a = fill("a", 2));
+
 julia> TulipaClustering.matrix_and_keys_to_df(m, k; layout)
 4×4 DataFrame
- Row │ rep_period  ts    a       val
-   │ Int64       Int64  String  Float64
+ Row │ rep_period  ts     a       val
+     │ Int64       Int64  String  Float64
 ─────┼────────────────────────────────────
-   1 │          1     1  a           1.0
-   2 │          1     2  a           2.0
-   3 │          2     1  a           3.0
-   4 │          2     2  a           4.0
+   1 │          1      1  a           1.0
+   2 │          1      2  a           2.0
+   3 │          2      1  a           3.0
+   4 │          2      2  a           4.0
 ```
 """
 function matrix_and_keys_to_df(
@@ -512,7 +535,7 @@ function matrix_and_keys_to_df(
 end
 
 """
-  append_period_from_source_df_as_rp!(df; source_df, period, rp, key_columns, layout = ProfilesTableLayout())
+    append_period_from_source_df_as_rp!(df; source_df, period, rp, key_columns, layout = ProfilesTableLayout())
 
 Extracts a period with index `period` from `source_df` and appends it as a
 representative period with index `rp` to `df`, using `key_columns` as keys.
@@ -521,54 +544,57 @@ Respects custom column names via `layout`.
 # Examples
 
 Default layout:
-```
-julia> source_df = DataFrame([:period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "b", :value => 5:8])
+```jldoctest
+julia> source_df = DataFrame(period = [1, 1, 2, 2], timestep = [1, 2, 1, 2], a = fill("b", 4), value = 5:8)
 4×4 DataFrame
  Row │ period  timestep  a       value
-     │ Int64   Int64      String  Int64
-─────┼──────────────────────────────────
-   1 │      1          1  b           5
-   2 │      1          2  b           6
-   3 │      2          1  b           7
-   4 │      2          2  b           8
+     │ Int64   Int64     String  Int64
+─────┼─────────────────────────────────
+   1 │      1         1  b           5
+   2 │      1         2  b           6
+   3 │      2         1  b           7
+   4 │      2         2  b           8
 
-julia> df = DataFrame([:rep_period => [1, 1, 2, 2], :timestep => [1, 2, 1, 2], :a .=> "a", :value => 1:4])
+julia> df = DataFrame(rep_period = [1, 1, 2, 2], timestep = [1, 2, 1, 2], a = fill("a", 4), value = 1:4)
 4×4 DataFrame
  Row │ rep_period  timestep  a       value
-     │ Int64       Int64      String  Int64
-─────┼──────────────────────────────────────
-   1 │          1          1  a           1
-   2 │          1          2  a           2
-   3 │          2          1  a           3
-   4 │          2          2  a           4
+     │ Int64       Int64     String  Int64
+─────┼─────────────────────────────────────
+   1 │          1         1  a           1
+   2 │          1         2  a           2
+   3 │          2         1  a           3
+   4 │          2         2  a           4
 
 julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df, period = 2, rp = 3, key_columns = [:timestep, :a])
 6×4 DataFrame
  Row │ rep_period  timestep  a       value
-     │ Int64       Int64      String  Int64
-─────┼──────────────────────────────────────
-   1 │          1          1  a           1
-   2 │          1          2  a           2
-   3 │          2          1  a           3
-   4 │          2          2  a           4
-   5 │          3          1  b           7
-   6 │          3          2  b           8
+     │ Int64       Int64     String  Int64
+─────┼─────────────────────────────────────
+   1 │          1         1  a           1
+   2 │          1         2  a           2
+   3 │          2         1  a           3
+   4 │          2         2  a           4
+   5 │          3         1  b           7
+   6 │          3         2  b           8
 ```
 
 Custom layout:
-```
-julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
-julia> src = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :a .=> "b", :val => 5:8])
-julia> df = DataFrame([:rep_period => [1,1], :ts => [1,2], :a .=> "a", :val => [1,2]])
+```jldoctest
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val);
+
+julia> src = DataFrame(p = [1, 1, 2, 2], ts = [1, 2, 1, 2], a = fill("b", 4), val = 5:8);
+
+julia> df = DataFrame(rep_period = [1, 1], ts = [1, 2], a = fill("a", 2), val = [1, 2]);
+
 julia> TulipaClustering.append_period_from_source_df_as_rp!(df; source_df = src, period = 2, rp = 3, key_columns = [:ts, :a], layout)
 4×4 DataFrame
- Row │ rep_period  ts    a       val
-   │ Int64       Int64  String  Int64
+ Row │ rep_period  ts     a       val
+     │ Int64       Int64  String  Int64
 ─────┼──────────────────────────────────
-   1 │          1     1  a           1
-   2 │          1     2  a           2
-   3 │          3     1  b           7
-   4 │          3     2  b           8
+   1 │          1      1  a           1
+   2 │          1      2  a           2
+   3 │          3      1  b           7
+   4 │          3      2  b           8
 ```
 """
 function append_period_from_source_df_as_rp!(
@@ -713,7 +739,7 @@ end
       clustering_data,
       aux_clustering,
       last_period_excluded,
-      n_rp;
+      n_rp,
       layout = ProfilesTableLayout()
     )
 
@@ -728,20 +754,27 @@ Checks include:
 
 # Examples
 
-```
-julia> df = DataFrame([:period => [1,1,2,2], :timestep => [1,2,1,2], :zone .=> "A", :value => 10:13])
-julia> aux = TulipaClustering.find_auxiliary_data(df)
-julia> init = DataFrame([:period => [1,1], :timestep => [1,2], :zone .=> "A", :value => [10, 11]])
+```jldoctest
+julia> df = DataFrame(period = [1, 1, 2, 2], timestep = [1, 2, 1, 2], zone = fill("A", 4), value = 10:13);
+
+julia> aux = TulipaClustering.find_auxiliary_data(df);
+
+julia> init = DataFrame(period = [1, 1], timestep = [1, 2], zone = fill("A", 2), value = [10, 11]);
+
 julia> TulipaClustering.validate_initial_representatives(init, df, aux, false, 2)
 ```
 
 Custom layout:
-```
-julia> layout = ProfilesTableLayout(; period=:p, timestep=:ts, value=:val)
-julia> df2 = DataFrame([:p => [1,1,2,2], :ts => [1,2,1,2], :zone .=> "A", :val => 10:13])
-julia> aux2 = TulipaClustering.find_auxiliary_data(df2; layout)
-julia> init2 = DataFrame([:p => [1,1], :ts => [1,2], :zone .=> "A", :val => [10, 11]])
-julia> TulipaClustering.validate_initial_representatives(init2, df2, aux2, false, 2; layout)
+```jldoctest
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val);
+
+julia> df2 = DataFrame(p = [1, 1, 2, 2], ts = [1, 2, 1, 2], zone = fill("A", 4), val = 10:13);
+
+julia> aux2 = TulipaClustering.find_auxiliary_data(df2; layout);
+
+julia> init2 = DataFrame(p = [1, 1], ts = [1, 2], zone = fill("A", 2), val = [10, 11]);
+
+julia> TulipaClustering.validate_initial_representatives(init2, df2, aux2, false, 2, layout)
 ```
 """
 function validate_initial_representatives(
