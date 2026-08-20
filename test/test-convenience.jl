@@ -1217,10 +1217,8 @@ end
 
     # Check rep_periods_data table
     df_rep_periods_data =
-        DuckDB.query(
-            connection,
-            "FROM rep_periods_data ORDER BY year, rep_period",
-        ) |> DataFrame
+        DuckDB.query(connection, "FROM rep_periods_data ORDER BY year, rep_period") |>
+        DataFrame
 
     @test sort(names(df_rep_periods_data)) ==
           ["num_timesteps", "rep_period", "resolution", "year"]

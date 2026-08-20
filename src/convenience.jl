@@ -430,9 +430,8 @@ function _drop_incomplete_last_periods_per_crossby_group!(
     for sub_group in groupby(profiles, group_cols)
         n_periods = maximum(sub_group[!, period_col])
         period_duration = maximum(sub_group[!, timestep_col])
-        last_period_duration = maximum(
-            sub_group[sub_group[!, period_col] .== n_periods, timestep_col],
-        )
+        last_period_duration =
+            maximum(sub_group[sub_group[!, period_col] .== n_periods, timestep_col])
         if last_period_duration < period_duration
             parent_indices = parentindices(sub_group)[1]
             for (local_idx, parent_idx) in enumerate(parent_indices)
