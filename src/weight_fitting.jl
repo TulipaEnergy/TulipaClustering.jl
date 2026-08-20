@@ -1,7 +1,7 @@
 export fit_rep_period_weights!
 
 """
-  project_onto_simplex(vector)
+    project_onto_simplex(vector)
 
 Projects `vector` onto a unit simplex using Michelot's algorithm in
 Condat's accelerated implementation (2017). See Figure 2 of
@@ -60,7 +60,7 @@ function project_onto_simplex(vector::Vector{Float64})
 end
 
 """
-  project_onto_nonnegative_orthant(vector)
+    project_onto_nonnegative_orthant(vector)
 
 Projects `vector` onto the nonnegative orthant. This projection is trivial:
 replace negative components of the vector with zeros.
@@ -70,7 +70,7 @@ function project_onto_nonnegative_orthant(vector::Vector{Float64})
 end
 
 """
-  project_onto_standard_basis(vector)
+    project_onto_standard_basis(vector)
 
 Projects `vector` onto the standard basis. This projection is trivial:
 replace all components of the vector with zeros, except for the largest one,
@@ -84,7 +84,7 @@ function project_onto_standard_basis(vector::Vector{Float64})
 end
 
 """
-  projected_subgradient_descent!(x; gradient, projection, niters, rtol, learning_rate, adaptive_grad)
+    projected_subgradient_descent!(x; gradient, projection, niters, rtol, learning_rate, adaptive_grad)
 
 Fits `x` using the projected gradient descent scheme.
 
@@ -144,7 +144,7 @@ function projected_subgradient_descent!(
 end
 
 """
-  fit_rep_period_weights!(weight_matrix, clustering_matrix, rp_matrix; weight_type, tol, args...)
+    fit_rep_period_weights!(weight_matrix, clustering_matrix, rp_matrix; weight_type, tol, args...)
 
 Given the initial weight guesses, finds better weights for convex or conical
 combinations of representative periods. For conical weights, it is possible to
@@ -251,9 +251,9 @@ function fit_rep_period_weights!(
 end
 
 """
-  fit_rep_period_weights!(weight_matrix, clustering_matrix, rp_matrix; weight_type, tol, args...)
+    fit_rep_period_weights!(clustering_result; weight_type, tol, args...)
 
-  Given the initial weight guesses, finds better weights for convex or conical
+Given the initial weight guesses, finds better weights for convex or conical
 combinations of representative periods. For conical weights, it is possible to
 bound the total weight by one.
 

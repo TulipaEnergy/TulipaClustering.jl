@@ -1,5 +1,5 @@
 """
-  find_representative_periods(
+    find_representative_periods(
     clustering_data,
     n_rp;
     drop_incomplete_last_period = false,
@@ -53,29 +53,29 @@ Returns a `ClusteringResult` with:
 # Examples
 
 Finding two representatives using default values:
-```
+```jldoctest
 julia> df = DataFrame(
            period = kron(1:4, ones(Int, 2)),
            timestep = repeat(1:2, 4),
            profile = "A",
            value = 1:8,
-         )
+         );
 
-julia> res = TulipaClustering.find_representative_periods(df, 2)
+julia> TulipaClustering.find_representative_periods(df, 2); nothing
 ```
 
 Finding two representatives using k-medoids and a custom layout:
-```
-julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val)
+```jldoctest
+julia> layout = ProfilesTableLayout(; period = :p, timestep = :ts, value = :val);
 
 julia> df = DataFrame(
            p = kron(1:4, ones(Int, 2)),
            ts = repeat(1:2, 4),
            profile = "A",
            val = 1:8,
-         )
+         );
 
-julia> res = TulipaClustering.find_representative_periods(df, 2; method = :k_medoids, layout)
+julia> TulipaClustering.find_representative_periods(df, 2; method = :k_medoids, layout); nothing
 ```
 """
 function find_representative_periods(
