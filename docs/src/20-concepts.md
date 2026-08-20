@@ -85,30 +85,65 @@ $d_{cos}(𝑎𝑥, 𝑏𝑦) = d_{cos}(𝑥, 𝑦) \quad \text{if} \quad 𝑎, �
 
 ![Cosine Distance](assets/cosine-distance.png)
 
-## Clustering Per or Cross
+## [Grouping and Crossing Columns](@id grouping-and-crossing)
 
-The [`ProfilesTableLayout`](@ref) parameter in the function [`cluster!`](@ref) allows users to include `cols_to_groupby` for the clustering process. By default, all profiles will be clustered by the column `:year`, meaning that the representatives will be calculated per year. We recommend this approach because it is expected that renewable profiles will change over time due to advancements in technology. However, if the user prefers to have representative periods cross multiple years, they simply need to provide an empty vector for `cols_to_groupby` in the [`ProfilesTableLayout`](@ref).
+[`ProfilesTableLayout`](@ref) assigns two different roles to columns during
+[`cluster!`](@ref):
 
-In addition, if the profiles to cluster have the column `:scenario` (or similar name), it can be added to the `cols_to_groupby` parameter in order to obtain representative periods per scenario. If the column is in the input profiles, but it is not included in the columns to group by, then by default the representative periods will be calculated cross the scenario. In the following sections, we discuss more on each case.
+- `cols_to_groupby` partitions the input into independent clustering problems. Each
+  unique combination receives its own `num_rps` representative periods.
+- `cols_to_crossby` pools periods from its unique values inside each group. The pooled
+  values share one set of `num_rps` representative periods.
+
+The two lists must be disjoint. By default, `cols_to_groupby = [:year]` and
+`cols_to_crossby = []`, so every year is clustered independently.
+
+A column placed in neither list remains part of the period's feature vector. For example,
+if `scenario` is in neither list, period 1 contains the values for period 1 from every
+scenario and those aligned values are clustered together. This is not the same as
+`cols_to_crossby = [:scenario]`, which treats each scenario-period pair as a separate
+candidate in a shared pool.
+
+For a dataset with `Y` years, `S` scenarios, and `num_rps = R`, the choices are:
+
+| Goal | `cols_to_groupby` | `cols_to_crossby` | RPs per year | Scenario in RP profiles | Scenario in mapping |
+| --- | --- | --- | --- | --- | --- |
+| Separate RPs per scenario | `[:year, :scenario]` | `[]` | `R * S` | Yes | Yes |
+| Shared RPs pooled across scenarios | `[:year]` | `[:scenario]` | `R` | No | Yes |
+| Shared RPs for aligned multi-scenario periods | `[:year]` | `[]` | `R` | Yes | No |
+
+See [Grouping and crossing in practice](@ref grouping-and-crossing-tutorial) for a
+runnable example and the resulting output tables.
 
 ### Per-Scenario
 
-In this approach, representative periods are chosen separately for each scenario. This involves applying the steps of selection and weight calculation to each scenario individually. As a result, each scenario has its own set of representative periods (RPs) that capture all periods within that scenario.
+Set `cols_to_groupby = [:year, :scenario]` and leave `cols_to_crossby` empty to
+choose representative periods separately for each year-scenario combination. Selection
+and weight fitting run independently, so the output contains `num_rps` representatives
+per combination.
 
 The following figure illustrates the concept of scenario-specific representative periods. For instance, the high scenario has its own representative periods, labeled RPs High 1 and High 2; the medium scenario has RPs Medium 1 and Medium 2; and the low scenario features RPs Low 1 and Low 2. These representative periods are used to approximate the original periods within each scenario.
 
 ![per-scenario](assets/per-scenario.png)
 
-One advantage of this approach is that the clustering task is performed on smaller, more homogeneous sets. However, this separation also means that similar patterns across different scenarios may be ignored. As a result, the union of all representatives may include redundant or highly similar periods that increase the model size without adding new information.
+This approach creates smaller, more homogeneous clustering problems and preserves
+scenario-specific behavior. However, similar periods can be selected independently in
+several scenarios, increasing the total number of representatives and the downstream
+model size.
 
 ### Cross-Scenarios
 
-To better capture the overall structure of the whole scenario space, we propose calculating representative cross-scenarios. Here, representative periods are selected from the combined set of periods across all scenarios, resulting in a single, scenario-independent set of RPs. This approach enables us to identify a smaller set of representative periods that generalize well across different scenarios, thereby reducing redundancy and potentially enhancing model compactness.
-
-The key idea is to perform clustering on the complete joint set of scenarios. The selection process thus considers the joint variability in demand and availability across all scenarios. This enables the model to reuse the same representative periods in multiple scenarios, rather than duplicating similar patterns. In this approach, the weights reflect how many original periods cross all scenarios are best represented by each RP.
+Set `cols_to_groupby = [:year]` and `cols_to_crossby = [:scenario]` to pool all
+scenario-period pairs within each year. The selection process chooses one
+scenario-independent set of `num_rps` representatives from that pool. Each original
+period is still mapped separately, so `rep_periods_mapping` retains the `scenario`
+column even though `profiles_rep_periods` and `rep_periods_data` do not.
 
 The following figure illustrates the concept of representative periods across scenarios. Here, representative periods 1 to 6 are selected from the combined set of periods across all scenarios. These representative periods are then used to approximate the original periods in each scenario.
 
 ![cross-scenarios](assets/cross-scenarios.png)
 
-An advantage of this approach is its ability to minimize redundancy by recognizing similarities between periods in different scenarios. This can lead to a more efficient representation of uncertainty, primarily when common temporal patterns exist across the scenario set. However, it also requires more computational effort during the selection phase.
+This approach can reduce redundancy and keep the downstream model compact because every
+scenario reuses the same representatives. The clustering problem is larger, however, and
+a small shared set may represent unusual scenario-specific behavior less accurately than
+separate per-scenario sets.
