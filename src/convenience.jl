@@ -120,17 +120,23 @@ function cluster!(
     # incomplete periods (the last period of a non-last cross-by group) would no
     # longer be at the end and would cause dimension mismatches.
     drop_incomplete_for_find_rp = drop_incomplete_last_period
-    crossby_weight_factor = 1.0
+    crossby_weight_factors = Dict{Tuple, Float64}()
     if drop_incomplete_last_period && !isempty(layout.cols_to_crossby)
-        crossby_weight_factor =
-            _drop_incomplete_last_periods_per_crossby_group!(profiles, layout)
+        crossby_weight_factors = _drop_incomplete_last_periods_per_crossby_group!(
+            profiles,
+            layout,
+            period_duration,
+        )
         drop_incomplete_for_find_rp = false
     end
 
     grouped_profiles_data = groupby(profiles, layout.cols_to_groupby)
 
-    grouped_profiles_data, metadata_per_group =
-        _update_period_numbers_using_crossby_cols!(grouped_profiles_data, layout)
+    grouped_profiles_data, metadata_per_group = _update_period_numbers_using_crossby_cols!(
+        grouped_profiles_data,
+        layout;
+        crossby_weight_factors,
+    )
 
     results_per_group = Dict(
         group_key => find_representative_periods(
@@ -148,15 +154,18 @@ function cluster!(
             clustering_kwargs...,
         ) for (group_key, group) in pairs(grouped_profiles_data)
     )
-    for clustering_result in values(results_per_group)
-        if crossby_weight_factor != 1.0
-            clustering_result.weight_matrix .*= crossby_weight_factor
-        end
+    for (group_key, clustering_result) in pairs(results_per_group)
         fit_rep_period_weights!(
             clustering_result;
             weight_type,
             tol,
             weight_fitting_kwargs...,
+        )
+        metadata = metadata_per_group[group_key]
+        _rescale_crossby_weights!(
+            clustering_result.weight_matrix,
+            metadata.crossby_weight_factors,
+            metadata.num_periods,
         )
     end
     write_clustering_result_to_tables(
@@ -377,13 +386,23 @@ Modifies `grouped_profiles_data` in place by updating period numbers and removin
 function _update_period_numbers_using_crossby_cols!(
     grouped_profiles_data::GroupedDataFrame,
     layout::ProfilesTableLayout,
+    ;
+    crossby_weight_factors::Dict{Tuple, Float64} = Dict{Tuple, Float64}(),
 )
+    group_cols = vcat(layout.cols_to_groupby, layout.cols_to_crossby)
     metadata_per_group = Dict(
         group_key => (
             group_values = collect(group_key),
             num_periods = maximum(group[!, layout.period]),
             cross_values_list = [
                 NamedTuple(col => cross_group[1, col] for col in layout.cols_to_crossby) for cross_group in groupby(group, layout.cols_to_crossby)
+            ],
+            crossby_weight_factors = [
+                get(
+                    crossby_weight_factors,
+                    Tuple(cross_group[1, col] for col in group_cols),
+                    1.0,
+                ) for cross_group in groupby(group, layout.cols_to_crossby)
             ],
         ) for (group_key, group) in pairs(grouped_profiles_data)
     )
@@ -402,7 +421,7 @@ function _update_period_numbers_using_crossby_cols!(
 end
 
 """
-    _drop_incomplete_last_periods_per_crossby_group!(profiles, layout)
+    _drop_incomplete_last_periods_per_crossby_group!(profiles, layout, period_duration)
 
 For each combination of `cols_to_groupby` and `cols_to_crossby` columns in `profiles`,
 drops the last period if it is incomplete (i.e., has fewer timesteps than the other periods).
@@ -412,8 +431,8 @@ that incomplete last periods from each cross-by subgroup are removed before peri
 renumbering merges them into a single sequence.
 
 # Returns
-- Weight adjustment factor to redistribute the dropped periods' weight across
-  the remaining complete periods.
+- A dictionary mapping each group to the weight adjustment factor that
+  redistributes its dropped period across its remaining complete periods.
 
 # Modifications in Place
 Deletes rows of incomplete last periods from `profiles`.
@@ -421,32 +440,54 @@ Deletes rows of incomplete last periods from `profiles`.
 function _drop_incomplete_last_periods_per_crossby_group!(
     profiles::DataFrame,
     layout::ProfilesTableLayout,
-)
+    period_duration::Int,
+)::Dict{Tuple, Float64}
     period_col = layout.period
     timestep_col = layout.timestep
     group_cols = vcat(layout.cols_to_groupby, layout.cols_to_crossby)
     rows_to_delete = Int[]
-    weight_factor = 1.0
+    weight_factors = Dict{Tuple, Float64}()
     for sub_group in groupby(profiles, group_cols)
-        n_periods = maximum(sub_group[!, period_col])
-        period_duration = maximum(sub_group[!, timestep_col])
+        n_periods = Int(maximum(sub_group[!, period_col]))
         last_period_duration =
-            maximum(sub_group[sub_group[!, period_col] .== n_periods, timestep_col])
+            Int(maximum(sub_group[sub_group[!, period_col] .== n_periods, timestep_col]))
+        group_key = Tuple(sub_group[1, col] for col in group_cols)
+        weight_factor = 1.0
         if last_period_duration < period_duration
+            if n_periods == 1
+                throw(
+                    ArgumentError(
+                        "Cannot drop the incomplete last period from group $group_key because it has no complete periods.",
+                    ),
+                )
+            end
             parent_indices = parentindices(sub_group)[1]
             for (local_idx, parent_idx) in enumerate(parent_indices)
                 if sub_group[local_idx, period_col] == n_periods
                     push!(rows_to_delete, parent_idx)
                 end
             end
-            full_period_timesteps = period_duration * (n_periods - 1)
-            total_timesteps = full_period_timesteps + last_period_duration
-            weight_factor = total_timesteps / full_period_timesteps
+            weight_factor, _ =
+                find_period_weights(period_duration, last_period_duration, n_periods, true)
         end
+        weight_factors[group_key] = weight_factor
     end
     if !isempty(rows_to_delete)
         sort!(unique!(rows_to_delete))
         deleteat!(profiles, rows_to_delete)
     end
-    return weight_factor
+    return weight_factors
+end
+
+function _rescale_crossby_weights!(
+    weight_matrix::AbstractMatrix{Float64},
+    weight_factors::Vector{Float64},
+    num_periods::Int,
+)
+    for (cross_idx, weight_factor) in enumerate(weight_factors)
+        first_period = num_periods * (cross_idx - 1) + 1
+        last_period = num_periods * cross_idx
+        weight_matrix[first_period:last_period, :] .*= weight_factor
+    end
+    return weight_matrix
 end
