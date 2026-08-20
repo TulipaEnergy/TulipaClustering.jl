@@ -283,6 +283,112 @@ However, sometimes the user might want to cluster by other columns, e.g., `scena
 !!! note "The number of representative periods"
     When clustering by multiple columns, the total number of representative periods will be `num_rps * number_of_unique_combinations_of_groupby_columns`. For example, if the input data has 3 unique years and 2 unique scenarios, and the user wants to cluster by `year` and `scenario`, then the total number of representative periods will be `num_rps * 3 * 2 = num_rps * 6`.
 
+## [Handling an Incomplete Final Week](@id incomplete_last_period)
+
+When the input uses hourly timesteps, one week contains 168 hours:
+
+```julia
+period_duration = 7 * 24  # 168 hours
+```
+
+A 365-day year contains 8,760 hours. This is not an exact number of weeks:
+
+```math
+8760 = 52 \times 168 + 24
+```
+
+The data therefore contains 52 complete weeks and a final period with only 24 hours.
+The `drop_incomplete_last_period` keyword controls what happens to that final period.
+
+- With the default `drop_incomplete_last_period = false`, the final 24 hours are kept
+  as a special, shorter representative period. If you request eight representative
+  periods, one is reserved for this shorter period and the other seven represent the
+  complete weeks.
+- With `drop_incomplete_last_period = true`, the final 24 hours are removed before
+  clustering. All eight requested representative periods can then represent complete
+  168-hour weeks. The weights of the complete periods are increased by
+  `8760 / (52 * 168) ≈ 1.00275` so that they also account for the dropped hours.
+
+Dropping the final period is useful when the model that consumes the clustering results
+requires every representative period to have the same duration. It also makes the output
+smaller: `timeframe_data` and `rep_periods_mapping` contain 52 base periods instead of 53,
+and every row in `rep_periods_data` has `num_timesteps = 168`.
+
+However, the original values in those final 24 hours are no longer used to choose the
+representative periods. Do not drop the period if it contains an important event, such as
+an extreme demand peak or low-renewable interval, that must be preserved exactly. Also be
+aware that the slightly larger weights preserve the total represented duration, but they
+cannot reproduce the exact shape of the dropped hours.
+
+### Per-scenario clustering
+
+Use `cols_to_groupby` when each scenario should have its own representative periods:
+
+```julia
+period_duration = 168
+num_rps = 8
+
+per_scenario_layout = TulipaClustering.ProfilesTableLayout(;
+    cols_to_groupby = [:year, :scenario],
+    cols_to_crossby = [],
+)
+
+per_scenario_clusters = cluster!(
+    connection,
+    period_duration,
+    num_rps;
+    layout = per_scenario_layout,
+    drop_incomplete_last_period = true,
+)
+```
+
+Here, the last incomplete week is handled separately for every year-scenario group. For a
+365-day year, each scenario keeps 52 complete weeks and receives its own weight adjustment.
+Each scenario also gets its own set of `num_rps` representative periods, so the total number
+of representative periods grows with the number of scenarios.
+
+### Cross-scenario clustering
+
+Use `cols_to_crossby` when scenarios should share one set of representative periods:
+
+```julia
+period_duration = 168
+num_rps = 8
+
+cross_scenario_layout = TulipaClustering.ProfilesTableLayout(;
+    cols_to_groupby = [:year],
+    cols_to_crossby = [:scenario],
+)
+
+cross_scenario_clusters = cluster!(
+    connection,
+    period_duration,
+    num_rps;
+    layout = cross_scenario_layout,
+    drop_incomplete_last_period = true,
+)
+```
+
+In this case, TulipaClustering removes the incomplete final week from each scenario before
+combining their complete weeks for clustering. The scenarios share the same `num_rps`
+representative periods, while `rep_periods_mapping` still records the mapping and weight for
+each scenario. Weight adjustments are calculated separately, so scenarios with different
+final-period lengths receive the appropriate adjustment.
+
+The practical differences are:
+
+| | Per scenario | Cross scenario |
+| --- | --- | --- |
+| Representative periods | A separate set for every scenario | One shared set across scenarios |
+| Incomplete period with `true` | Dropped independently from each scenario group | Dropped from each scenario before their data is combined |
+| Weight adjustment | Calculated inside each scenario group | Calculated separately for each crossed scenario |
+| Number of representative periods per year | `num_rps * number_of_scenarios` | `num_rps` |
+
+!!! warning "At least one complete period is required"
+    Every year-scenario series must contain at least 168 hours when
+    `drop_incomplete_last_period = true`. TulipaClustering raises an error rather than
+    dropping all the data from a group that contains only an incomplete week.
+
 ## [Using a Custom Layout](@id custom_layout)
 
 Let's say that you have a table that uses different names for the columns of your data.
