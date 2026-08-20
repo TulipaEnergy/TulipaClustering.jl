@@ -1245,8 +1245,9 @@ end
     max_periods = combine(grouped, :period => maximum => :max_period)
     @test all(max_periods.max_period .== num_complete_periods)
 
-    # All weights should be positive
-    @test all(df_rep_periods_mapping.weight .> 0.0)
+    # Dropped timesteps are redistributed across the complete periods
+    expected_weight = num_timesteps / (period_duration * num_complete_periods)
+    @test all(df_rep_periods_mapping.weight .≈ expected_weight)
 
     # Check profiles_rep_periods table
     df_profiles_rep_periods =
@@ -1259,4 +1260,68 @@ end
           ["profile_name", "rep_period", "timestep", "value", "year"]
     expected_rows = length(profile_names) * num_rps * period_duration * length(years)
     @test nrow(df_profiles_rep_periods) == expected_rows
+
+    @testset "uses the weight factor for each group" begin
+        connection = DBInterface.connect(DuckDB.DB)
+        DuckDB.query(
+            connection,
+            """
+            CREATE TABLE profiles AS
+            SELECT
+                y.year,
+                s.scenario,
+                'name1' AS profile_name,
+                i AS timestep,
+                CAST(i + y.year + s.scenario AS DOUBLE) AS value
+            FROM (VALUES (2020, 10), (2021, 11)) AS y(year, num_timesteps)
+            CROSS JOIN (VALUES (1), (2)) AS s(scenario)
+            CROSS JOIN LATERAL generate_series(1, y.num_timesteps) AS t(i)
+            """,
+        )
+
+        profiles = DuckDB.query(connection, "FROM profiles") |> DataFrame
+        split_into_periods!(profiles; period_duration, layout)
+        weight_factors =
+            @inferred TulipaClustering._drop_incomplete_last_periods_per_crossby_group!(
+                profiles,
+                layout,
+                period_duration,
+            )
+        expected_weight_factors = Dict(2020 => 1.25, 2021 => 1.375)
+        @test all(
+            weight_factor == expected_weight_factors[year] for
+            ((year, _), weight_factor) in weight_factors
+        )
+
+        cluster!(
+            connection,
+            period_duration,
+            num_rps;
+            drop_incomplete_last_period = true,
+            layout,
+            clustering_kwargs = Dict(:display => :none),
+            weight_fitting_kwargs = Dict(:niters => 20),
+        )
+        mapping =
+            DuckDB.query(connection, "FROM rep_periods_mapping ORDER BY year") |> DataFrame
+        for group in groupby(mapping, :year)
+            @test all(group.weight .≈ expected_weight_factors[only(unique(group.year))])
+        end
+    end
+
+    @testset "rejects a group without a complete period" begin
+        connection = _new_connection_multi_scenario_year(;
+            profile_names,
+            num_timesteps = 2,
+            years,
+            scenarios,
+        )
+        @test_throws ArgumentError cluster!(
+            connection,
+            period_duration,
+            1;
+            drop_incomplete_last_period = true,
+            layout,
+        )
+    end
 end
