@@ -73,6 +73,23 @@ The following figure shows the projection errors when approximating base period 
 
 The `distance` parameter in the function [`cluster!`](@ref) defines the metric used to measure how different the datapoints are. The parameter recieves any metric from the package [Distances.jl](https://github.com/JuliaStats/Distances.jl). By default it uses, euclidean distance, meaning that we seek the closest point in the convex hull by calculating the absolute distance. For instance, in the following figure, both points (2,3) and (3,6) is possible to find weights so that its error is smaller when projected to the hull.
 
+### Convex hull projection cache
+
+The hull-selection methods cache each candidate period's projection onto the current
+hull by default. When a new representative is added, a cached projection is reused
+only when the Euclidean obtuse-angle certificate
+
+$$
+(d - q)^\mathsf{T}(c - q) \le 0
+$$
+
+holds, where $d$ is the candidate period, $q$ is its cached projection, and $c$ is
+the newly added representative. This proves that the cached projection remains valid
+for the enlarged hull. The cache is therefore an exact reuse optimization rather than
+an approximate distance-ranking heuristic. Pass `cache = false` to recompute every
+projection. The certificate is used only with `Euclidean` and `SqEuclidean` distances;
+other metrics recompute projections even when caching is enabled.
+
 ![Euclidian Distance](assets/euclidian-distance.png)
 
 Nevertheless, when using the hull clustering, we want to measure dissimilarity so that:
