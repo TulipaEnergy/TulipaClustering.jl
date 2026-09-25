@@ -1,6 +1,6 @@
 name = "TulipaClustering"
 uuid = "314fac8b-c762-4aa3-9d12-851379729163"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["Greg Neustroev <G.Neustroev@tudelft.nl> and contributors"]
 
 [deps]
